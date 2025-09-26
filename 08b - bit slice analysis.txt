@@ -1,0 +1,137 @@
+;------------------------------------------------------------------------------------------
+;	Bitmask analysis
+;------------------------------------------------------------------------------------------
+;	Bitmasks are read from 3 sources: source_1, source_2 and source_3.
+;
+; 	If we name source_1 as S, source_2 as T, source_3 as U, then the bit composition of them is:
+;	
+; 	S (source_1)			T (source_2)			U (source_3)
+;	s7s6s5s4s3s2s1s0		t7t6t5t4t3t2t1t0		u7u6u5u4u3u2u1u0
+;
+;	When the bitmasks are about to be sent over the serial bus, they are always AND'ed with the #18 bitmask.
+;	Which has the net effect of "only sending" bits 4 and 3 of the bitmask over the bus. 
+; 	Of course, it sends all the 8 bits,	but only bits 4 and 3 have the chance of being set.
+;
+;	So to analyze which bits are considered from the source bytes, we have to analyze which are the resulting bits 4 and 3 for each bitmask.
+;
+;	The order in which they are sent is important, as they are serially shifted by the receiver routine on the computer's side.
+;
+;	So we'll call the bitmask pairs "bit_pair_X", where X is the order in which the bit pair is sent.
+;------------------------------------------------------------------------------------------
+;
+;	LDA S
+;
+;	s7s6s5s4s3s2s1s0
+;
+;	ASL A
+;
+;	s6s5s4s3s2s100	->	bit_pair_3		carry = s7		Bits 4 and 3 of bit_pair_3 are s3 and s2
+;
+;	ROR A (undoes previous ASL)
+;   
+;	s7s6s5s4s3s2s1s0					carry = #0
+;
+;	ROR A
+;
+;	#0s7s6s5s4s3s2s1					carry = s0
+;
+;	ROR A
+;
+;	s0#0s7s6s5s4s3s2 -> bit_pair_4		carry = s1		Bits 4 and 3 of bit_pair_4 are s6 and s5
+;
+;   ROL A (undoes previous ROR)
+;
+;	#0s7s6s5s4s3s2s1					carry = s0
+;
+; 	LDA T
+;	
+;	t7t6t5t4t3t2t1t0					carry = s0
+;
+; 	ROR A
+;
+;	s0t7t6t5t4t3t2t1 -> bit_pair_1		carry = t0		Bits 4 and 3 of bit_pair_1 are t5 and t4
+;
+;   LSR A
+;
+;	#0s0t7t6t5t4t3t2					carry = t1
+;
+;   LSR A
+;
+;	#0#0s0t7t6t5t4t3					carry = t2
+;
+;   LSR A
+;
+;	#0#0#0s0t7t6t5t4 -> bit_pair_2		carry = t3		Bits 4 and 3 of bit_pair_2 are s0 and t7
+;
+;---------------------- Second part
+;
+;	LDA T
+;	
+;	t7t6t5t4t3t2t1t0					carry = s0
+;
+; 	ASL (2 times)
+;
+;	t5t4t3t2t1t0#0#0 -> bit_pair_4		carry = s0		Bits 4 and 3 of bit_pair_4 are t2 and t1
+;
+;	LDA U
+;	
+;	u7u6u5u4u3u2u1u0
+;	
+;	TAX
+;	
+;	ROL A (3 times)
+;	
+;	u4u3u2u1u0s0u7u6					carry = u5
+;	
+;	PHA
+;	
+;	u4u3u2u1u0s0u7u6	-> bit_pair_1					Bits 4 and 3 of bit_pair_1 are u1 and u0
+;
+;	ROL A (3 times)
+;	
+;	u1u0s0u7u6u5u4u3	-> bit_pair_3	carry = u2		Bits 4 and 3 of bit_pair_3 are u7 and u6
+;	
+;	STA bit_pair_3
+;	
+;	TXA
+;	
+;	u7u6u5u4u3u2u1u0	-> bit_pair_2					Bits 4 and 3 of bit_pair_2 are u4 and u3
+;
+;
+;------------------------------------------------------------------------------------------
+; The resulting pairs of data bits, in the correct order in which they are sent, are:
+;
+; For the first byte:
+;			t5,t4
+;			s0,t7
+;			s3,s2
+;			s6,s5
+;
+; For the second byte:
+;			u1,u0
+;			u4,u3
+;			u7,u6
+;			t2,t1
+;
+;
+; As bits are sent over the serial bus LSB first, the resulting first byte, when deserialized on the receiver, looks like this:	
+;
+;			s6 s5 s3 s2 s0 t7 t5 t4
+;
+; And the resulting second byte:
+;	
+;			t2 t1 u7 u6 u4 u3 u1 u0
+;
+; "Concatenating" them together:	
+;
+;			s6 s5 s3 s2 s0 t7 t5 t4 t2 t1 u7 u6 u4 u3 u1 u0
+;
+; Comparing them against the original 3 bytes:
+;
+;		s7 s6 s5 s4 s3 s2 s1 s0 t7 t6 t5 t4 t3 t2 t1 t0 u7 u6 u5 u4 u3 u2 u1 u0
+;
+;	       s6 s5    s3 s2    s0 t7    t5 t4    t2 t1    u7 u6    u4 u3    u1 u0
+;
+; The bit pattern is clearly visible: starting from the MSB, for each group of 3 consecutive bits, 
+;	the first one is left out and the other two are transmitted.
+;
