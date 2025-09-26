@@ -1,0 +1,129 @@
+; ============================================================
+; Rapidlok – Stage 1 - loader hijack
+;
+; Purpose:
+;  - Load payload into $02ED–$0329 (first file on disk: "COPYRIGHT 1985")
+;  - Overwrite the KERNAL STOP-key vector so the loader's STOP probe
+;    jumps into the payload at $02ED
+;  - Exploit the KERNAL LOAD byte loop state to execute payload
+; ============================================================
+
+; -----------------------------------------------------------------
+; Disk/file notes (context for the loader payload)
+; -----------------------------------------------------------------
+; The first file on the disk is named "COPYRIGHT 1985".
+; Its directory entry indicates it starts at track 17, sector 0.
+; The first sector's load address is $02ED, so the loader places
+; the payload beginning at $02ED when the file is read.
+
+; ------------------------------------------------------------
+; Payload placed at $02ED by the load process.
+; NOTE: Not disassembled here
+; ------------------------------------------------------------
+loader_payload:              ; $02ED .. $0329
+    .byte $78,$68,$68,$84,$08,$C6,$AF,$A5,$AF,$85,$C4,$85,$09,$A5,$AE,$85
+    .byte $C3,$49,$9C,$85,$AE,$A0,$ED,$B1,$C3,$51,$08,$91,$C3,$C8,$D0,$F7
+    .byte $A0,$58,$20,$16,$03,$30,$A2,$7E,$EA,$20,$DD,$97,$F9,$2A,$28,$63
+    .byte $50,$F4,$01,$14,$CC,$0D,$19,$54,$CE,$AC,$43,$ED,$02	
+	; ^^^ last two bytes are $ED,$02 = little-endian $02ED (vector value)
+
+; ------------------------------------------------------------
+; Trampoline vector the Kernal uses to check the STOP key.
+; The loader overwrites this vector to point to $02ED.
+; ------------------------------------------------------------
+scan_stop_vector:            ; trampoline target (payload entry)
+    .word $F6ED              
+
+; ------------------------------------------------------------
+; Constants used by Kernal load loop
+; ------------------------------------------------------------
+serial_status        = $90   ; Kernal's serial/IEC status byte
+load_or_verify_flag  = $93   ; 0 = LOAD, non-zero = VERIFY
+write_ptr            = $AE   ; $AE/$AF points to current write address
+
+; ------------------------------------------------------------
+; KERNAL LOAD loop (byte-at-a-time loading routine)
+; The routine does setup, then loops to read each byte and either
+; verify or store it. On each byte, the KERNAL probes STOP by calling
+; the vector at `scan_stop_vector`. The loader replaces that vector
+; so the probe jumps into the payload.
+; ------------------------------------------------------------
+
+; ... setup code runs before the byte-read loop ...
+
+read_byte_loop:
+    ; Mask selected status bits before each byte
+    LDA #$FD
+    AND serial_status
+    STA serial_status
+
+    ; ===== Scan STOP key via vector =====
+    JSR jump_to_scan_stop_vector
+    BNE stop_key_not_pressed       ; Z=0 => not pressed
+
+stop_key_pressed:
+    JMP close_serial_bus           ; Abort on STOP
+
+stop_key_not_pressed:
+    JSR recv_byte_from_serial      ; Read one byte from IEC
+    TAX                             ; Save received byte in X
+
+    ; Check for serial timeout (BCS if timed out after 2 LSRs)
+    LDA serial_status
+    LSR
+    LSR
+    BCS read_byte_loop             ; Retry on timeout
+
+    TXA                             ; Restore byte to A
+
+    ; Branch on LOAD (0) vs VERIFY (!=0)
+    LDY load_or_verify_flag
+    BEQ load
+
+verify:
+    LDY #$00
+    CMP (write_ptr),Y               ; Compare with memory
+    BEQ move_pointer                ; Match → advance pointer
+
+    ; Mismatch: mark error in serial_status
+    LDA #$10
+    JSR or_into_serial_status
+
+	;The following 3 code bytes are: 2C 91 AE
+	;
+    ; Intentional 3-byte no-op using BIT abs:
+    ;   Raw stream contains $2C then the next two bytes,
+    ;   forming BIT $AE91. This safely consumes them and
+    ;   has no side effects on flags we care about.
+    BIT $AE91                       ; absorb 2 following bytes
+
+load:
+    ; LOAD path: store received byte via (write_ptr),Y
+    STA (write_ptr),Y
+
+move_pointer:
+    ; Increment write pointer
+    INC write_ptr
+    BNE check_bytes_pending
+    INC write_ptr+1
+
+check_bytes_pending:
+    ; BIT serial_status: use V flag (or other specified bit) to test
+    ; whether more bytes remain. Branch while more bytes are pending.
+	BIT serial_status               
+    BVC read_byte_loop              ; Loop while more bytes remain
+
+; ------------------------------------------------------------
+; Vector indirection used above; KERNAL uses JMP (vector) at $FFE1.
+; Our `jump_to_scan_stop_vector` routes to that same indirection.
+; ------------------------------------------------------------
+jump_to_scan_stop_vector:
+    JMP (scan_stop_vector)          ; Indirect JMP through our vector
+
+; ------------------------------------------------------------
+; Notes on the hijack:
+; - The payload contains $ED,$02 at its end, which is the little-endian
+;   representation of $02ED. The loader writes that into the vector slot.
+; - When the KERNAL probes STOP, execution follows the vector to $02ED.
+; - On exit, write_ptr will point just past the vector storage ($032A)
+; ------------------------------------------------------------

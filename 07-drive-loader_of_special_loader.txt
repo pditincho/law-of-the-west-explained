@@ -1,0 +1,60 @@
+; ============================================================
+; Rapidlok — Stage 7: Queue & load three sectors
+; ============================================================
+; Context:
+;  - The loader previously decrypted code at $0300 and has jumped
+;    into that stub. This stage uses the drive job queue to load
+;    three additional sectors into memory for later use.
+;
+; Action:
+;  - Queue three 'read sector' jobs that request these sectors:
+;      * Job #1 → Track $12  Sector $09 → buffer $0400–$04FF
+;      * Job #2 → Track $12  Sector $12 → buffer $0500–$05FF
+;      * Job #3 → Track $12  Sector $06 → buffer $0600–$06FF
+;  - Re-enable the ROM job processor so the 1541 services the queued jobs.
+
+;  - Execution continues from the decrypted stub (entry at $0300 / next PC).
+job_code_for_job_1 = $01
+track_for_job_1 = $08
+
+;Tracks and sectors for the next jobs
+track_sectors_for_jobs:
+    .byte $12, $09, $12, $12, $12, $06   ; T/S: 18/9, 18/18, 18/6
+
+;0300:
+;-----------------------------------------------
+; Setup track and sector for each job
+;-----------------------------------------------
+	; Use .X as data index
+    LDX #$05
+store_track_and_sector_for_job:
+    LDA track_sectors_for_jobs,X
+    STA track_for_job_1,X
+    DEX
+    BPL store_track_for_job
+;-----------------------------------------------
+; Launch jobs 3 to 1, in that order
+; Sectors will be loaded in the regions starting at $0400/0500/0600 for jobs 1-3 respectively
+;-----------------------------------------------
+    CLI
+    LDX #$02
+launch_job:
+	;Setup the job to read a sector into memory
+    LDA #$80					;#80 = Read sector into memory
+    STA job_code_for_job_1,X
+wait_for_job_completion:
+	;Check if the job #X is complete (bit 7 clear means it's complete)
+    LDA job_code_for_job_1,X
+	;If not, loop until it is
+    BMI wait_for_job_completion
+	;It's complete - Did it succeed? #01 means success, anything else is an error
+    CMP #$02
+	;If it failed, launch it again
+    BCS launch_job
+	;It succeeded - continue with next job
+    DEX
+    BPL launch_job
+
+;Note that track 18 sector 9 will be loaded last
+;This will cause its sector header to be stored in the area $24-$27, in its raw GCR representation
+;Execution will continue at $031C

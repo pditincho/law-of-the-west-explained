@@ -1,0 +1,1839 @@
+;==================================================================
+; Stage 8 - Special-drive load / decrypt / transmit routine
+;
+; Purpose
+; - Implements the drive-side part of a custom fast-loader/protection system.
+; - Decrypts multiple encrypted regions that were loaded earlier, unpacks packed
+; bitstreams into three output buffers, and sends the resulting data back to
+; the host over the IEC serial (using a custom 2-bit-per-transfer scheme).
+; - Performs several timing/protection checks (byte/block sync validations,
+; timing signature checks on specific tracks) and key decryption routines.
+;
+; High-level flow
+; 1. Initialize bitstreams and decryption state.
+; 2. Decrypt a large region in-place using a rotating 24-bit key/bitstream.
+; 3. Unpack packed data (2 input bytes → 3 output bytes) into three buffers.
+; 4. Send the unpacked bytes over the serial bus with a four-phase handshake.
+; 5. Run protection/timing validations (search sectors, measure sync runs,
+; validate against decrypted keys).
+; 6. Read all required sectors (seek tracks and read sectors into buffers).
+; 7. Clean up / zero memory and reboot the drive if needed.
+;
+; Preconditions & effects
+; - Expects various zero-page and workspace addresses to be initialized
+; by earlier code (active_buffer_ptr, sentinel, bit_stream_1..4, etc.)
+; - Uses the ROM step & sync helpers (JSR into ROM) — depends on 1541 ROM.
+; - May reset the drive via disk_initialization on certain timeouts or failures.
+;
+; See the per-routine comments below for detailed behavior.
+;==================================================================
+;Execution resumes at address $031C (initialize_bitstream)
+
+;A 24-bit bitstream (or bit sequence), which takes exactly 3 bytes
+bit_stream_1 = $24
+bit_stream_2 = $25
+bit_stream_3 = $26
+bit_stream_4 = $27		;An extra bitstream byte, used in the setup part
+active_buffer_ptr = $30
+sentinel = $bb		;The sentinel from the previous routine (value #7B)
+
+;These 2 addresses were written into by the "M-W" command before
+encrypted_track_index = $d6	
+encrypted_sector_number = $d7	
+
+;Memory-mapped addresses of the 1541
+data_port_b = $1800
+timer_1_high_counter = $1805
+interrupt_flag_register_serial = $180d
+disk_controller_register = $1c00
+timer_1_high_latch_register = $1c07
+timer_1_high_counter_disk = $1c05	
+interrupt_flag_register_disk = $1c0d
+
+
+
+;==================================================================
+; Initialize bitstream
+;
+; Purpose:
+;  - Compute bitmask values used later by the bitstream routines.
+;  - These values are derived from intermediate results left by 1541
+;    ROM routines (sector header decode and GCR→binary conversion).
+;
+; Zero-page inputs (as left by prior ROM calls):
+;  - Raw GCR header bytes:   $24..$28 = $52, $6D, $55, $65, $72
+;    -> these are the GCR bytes for Track $12 (18) / Sector $09 (last sector read)
+;    -> after ROM binary conversion these yield header fields: $08, $6F, $09, $12
+;
+;  - GCR→binary conversion state: $56..$5A = $1E, $1A, $13, $17, $0A
+;    -> these correspond to nibble indices (E, A, 3, 7, 0)
+;
+; Only the following zero-page bytes are relevant to this routine:
+;   - $24  (raw GCR byte / converted nibble)  → value used: #$5D
+;   - $58  (conversion index)                 → value used: #$13
+;   - $59  (conversion index)                 → value used: #$17
+;
+; Other state:
+;  - active_buffer_ptr (two-byte pointer) at $30..$31 is used as an outer-loop
+;    pointer/counter by this and other GCR conversion routines. It currently
+;    holds $0400 (high byte = $04, low byte = $00).
+;
+; Preconditions:
+;  - On entry: A = #$01 (caller-provided).
+;  - The ROM conversion routines must have populated $24..$28 and $56..$5A
+;    as described; otherwise this initialization will produce incorrect masks.
+;
+; Effects (high level):
+;  - Produces bit_stream values (stored to bit_stream_1..4 or similar) derived
+;    from the values above; these bitmasks drive the later bitstream reader.
+;
+;==================================================================
+initialize_bitstream:
+
+	;-----------------------------------------------
+	; Initialize bitstream based on the values of GCR routines variables
+	;-----------------------------------------------
+    SEI
+    CLC
+	;--------------------
+	; bit_stream_1 = #A4
+	;--------------------
+	; bit_stream_1 holds value #52 
+	; #52 << 1 = #A4
+    ROL bit_stream_1
+	;--------------------
+	; bit_stream_3 = #6E
+	;--------------------
+	; $58 holds value #13
+	; #13 << 1 = #26
+	; #26 XOR #48 = #6E 
+    LDA $58
+    ASL A
+    EOR #$48
+    STA bit_stream_3
+	;--------------------
+	; bit_stream_4 = #83
+	;--------------------
+	; $59 holds value #17
+	; #17 << 1 = #2E
+	; #2E XOR #AD = #83
+    LDA $59
+    ASL A
+    EOR #$AD
+    STA bit_stream_4
+	;-----------------------------------------------
+	; Set active_buffer_ptr to $0300 by decrementing its high byte
+	;-----------------------------------------------
+    DEC >active_buffer_ptr
+;
+; On exit of this section, the bit_stream_1-4 area will hold these values: A4 6D 6E 83
+;==================================================================
+; decrypt_data: decrypt remaining encrypted region ($039C..$07FF)
+;
+; Purpose
+;  - Decrypt the remaining encrypted bytes starting at the active buffer
+;    pointer. This routine performs a two-level loop:
+;      * inner loop: iterate a fixed number of byte positions indexed by Y,
+;        XOR each byte with the current `sentinel` and update the bitstream;
+;      * outer loop: advance the active buffer pointer (high byte) and
+;        repeat the inner loop for the next block, until the outer limit
+;        is reached.
+;
+; Key data & layout
+;  - Active buffer reads/writes use (active_buffer_ptr),Y addressing.
+;  - Address range covered: $039C .. $07FF (assembled as multiple inner
+;    blocks; see constants below).
+;
+; Bitstream registers (naming used in analysis)
+;  - D  := bit_stream_1   (lowest-order word)
+;  - C  := sentinel       (also used as the XOR key)
+;  - B  := bit_stream_3
+;  - A  := bit_stream_4   (highest-order word)
+;  - d0 := least-significant bit of D
+;
+; Rotation semantics
+;  - The sequence of ROR/ROL instructions:
+;       ROR D
+;       ROL A
+;       ROL B
+;       ROL C
+;       ROL D
+;    implements a single **left** rotation of the concatenated bitstream
+;    [A:B:C:d0] by one bit (the carry is used to pass the wrapped bit).
+;    In short: the bitstream is rotated one bit between each inner iteration.
+;
+; Loop counts (as implemented)
+;  - Inner loop: LDY #$9C then increment Y until it wraps to 0; this yields
+;    exactly 0x64 (100 decimal) inner iterations on the first outer pass, and 256 iterations on following ones.
+;  - Outer loop: increment >active_buffer_ptr and repeat until >active_buffer_ptr == $08.
+;    In the observed code that yields five outer passes (e.g., high byte from $04 → $08).
+;
+; Effects & side effects
+;  - Each inner iteration:
+;      LDA (active_buffer_ptr),Y
+;      EOR sentinel
+;      STA (active_buffer_ptr),Y
+;    so the target byte is overwritten with its decrypted value.
+;  - The routine mutates bit_stream_1/3/4 and sentinel as it rotates them.
+;  - On exit the high byte of active_buffer_ptr has been advanced to the
+;    termination value; the code then branches to `unpack_data`.
+;
+; Preconditions
+;  - active_buffer_ptr must point to the first encrypted block (low/high bytes set).
+;  - The bitstream registers (A/B/C/D) and sentinel must be initialized
+;    by the earlier init routine.
+;==================================================================
+INITIAL_OFFSET = $9C
+
+decrypt_data:
+	;On entry, the Carry is clear
+	;Use .Y as the decryption offset
+    LDY INITIAL_OFFSET
+next_rotation:
+	;Decrypt encrypted area (039C-03FF) with the current value of the sentinel
+    LDA (active_buffer_ptr),Y
+    EOR sentinel
+    STA (active_buffer_ptr),Y
+	;Rotate bit stream left once (bit_stream composed of C,B,A,d0 as explained above)
+    ROR bit_stream_1
+    ROL bit_stream_4
+    ROL bit_stream_3
+    ROL sentinel
+    ROL bit_stream_1
+	;Keep rotating until .Y is #00
+    INY
+    BNE next_rotation
+	; Increment the "outer loop counter" (>active_buffer_ptr)
+    INC >active_buffer_ptr
+	; Do an outer loop iteration until we reach a value of #08
+	; This means a total of 5 outer loop iterations (#04 to #08)
+    LDA >active_buffer_ptr
+    CMP #$08
+    BNE next_rotation
+    BEQ unpack_data
+
+;==================================================================
+; Unpack & transmit routine
+;
+; Purpose:
+;  - Expand packed data (2 input bytes → 3 output bytes) into three
+;    output buffers, then trigger a serial transmit of the packed stream.
+;
+; Context / entry state:
+;  - Expects: write_index = #$00 on entry (index into unpacked buffers).
+;  - This routine initializes read_index, total_bytes_to_send, and the
+;    unpacked_data_3 pointer before starting.
+;
+; Memory map / important symbols:
+;  - packed_data            = $03A0   ; input stream (pairs of bytes)
+;  - unpacked_data_1        = $017C   ; output buffer 1 (indexed by Y)
+;  - unpacked_data_2        = $023E   ; output buffer 2 (indexed by Y)
+;  - unpacked_data_3_ptr    = $C9     ; zero-page pointer → target for output 3 (indirect,Y)
+;  - read_index             = $BC     ; zero-page index into packed_data (increments by 2)
+;  - write_index            = $30     ; zero-page index into unpacked buffers (increments by 1)
+;  - total_bytes_to_send_hi = $B5     ; high byte of bytes-to-send
+;  - total_bytes_to_send_lo = $B6     ; low  byte of bytes-to-send
+;
+; Loop & counts (concrete):
+;  - Outer loop executes 48 iterations (write_index = 0 .. $2F).
+;  - Each iteration consumes 2 bytes from packed_data → total packed bytes = 48 * 2 = $60 (96).
+;  - Each iteration produces 3 bytes written to:
+;      unpacked_data_1[Y], unpacked_data_2[Y], (unpacked_data_3_ptr),Y
+;    so each unpacked buffer receives 48 bytes (total unpacked bytes = 144).
+;
+; Subroutine contract:
+;  - JSR build_bitstream
+;      In:  X = packed_data[i]   ; A = packed_data[i+1]
+;      Out: bit_stream_1, bit_stream_2, bit_stream_3
+;    (build_bitstream must supply the three unpacked bytes in those locations)
+;
+; After unpacking:
+;  - total_bytes_to_send is set to $0060; the code calls send_bytes_over_serial
+;    to transmit packed bytes (or otherwise consume total_bytes_to_send).
+;  - The routine sets CLOCK OUT (data_port_b) and checks timer_1_high_counter_serial
+;    for a timeout; on timeout it resets the drive (disk_initialization).
+;==================================================================
+
+read_index = $bc
+write_index = $30
+total_bytes_to_send_hi = $b5
+total_bytes_to_send_lo = $b6
+packed_data = $03a0
+unpacked_data_1 = $017C
+unpacked_data_2 = $023E
+unpacked_data_3_ptr = $c9
+PAIR_COUNT     = $30    ; 48 (number of unpack iterations)
+PACKED_BYTES   = $60    ; 96 (bytes consumed)
+TIMEOUT		   = $50
+CLKOUT_serial  = $08		
+
+;On entry, write_index = #00 (from the previous code section)
+
+unpack_data:
+	;Set low byte of unpacked_data_3_ptr to #00
+    LDA #$00
+    STA <unpacked_data_3_ptr
+	;Set total bytes to send (hi part) to #00
+    STA total_bytes_to_send_hi
+	;Set index to #00
+    STA read_index
+	; unpacked_data_3_ptr = $0200
+    LDA #$02
+    STA >unpacked_data_3_ptr
+	; Set total bytes to send (low part) to #60
+    LDA PACKED_BYTES
+    STA total_bytes_to_send_lo
+	;--------------------------------
+unpack_2_bytes:
+	;Use .Y as read index
+    LDY read_index
+	;Load a pair of bytes from the packed data into .X and .A
+    LDX packed_data,Y
+    LDA packed_data+1,Y
+	;Move read index to reference the next pair of packed bytes
+    INY
+    INY
+    STY read_index
+	;Unpack the 2 bytes into a 24-bit bitstream (using .X and .A as arguments)
+    JSR build_bitstream
+	;Use .Y as write index now
+    LDY write_index
+	;Store each byte of the unpacked bitstream into a separate unpacked_data buffer
+    LDA bit_stream_1
+    STA unpacked_data_1,Y
+    LDA bit_stream_2
+    STA unpacked_data_2,Y
+    LDA bit_stream_3
+    STA (unpacked_data_3_ptr),Y
+	;Move write index
+    INY
+    STY write_index
+	;Loop until we do #30 unpackings
+    CPY PAIR_COUNT
+    BNE unpack_2_bytes
+	;--------------------------------
+	;Set timer to 50 milliseconds? Not sure if the number is correct
+    LDA TIMEOUT
+    STA timer_1_high_counter_serial
+    JSR send_bytes_over_serial
+	;Set CLOCK OUT line on serial bus
+    LDA CLKOUT_serial
+    STA data_port_b
+	;Was there a timeout?
+    BIT timer_1_high_counter_serial
+	;If not, continue
+    BMI setup_validations
+	;Timeout, something failed, reset the disk drive
+    JMP disk_initialization
+;==================================================================
+;Unused code
+;==================================================================
+    LDA #$00
+    STA $3E
+    STA $01
+	;Set disk drive status to #10 (disk head stepping = on)
+    LDA #$10
+    STA $20
+    ASL A
+    STA timer_1_high_latch_register
+    LDA #$46
+    STA disk_controller_register
+    JMP $F99C
+;==================================================================
+; Validate protections and then read all remaining sectors
+;==================================================================
+remaining_sector_validation_failures = $d5
+NEXT_TRACK_SEEK = $12
+
+setup_validations:
+    LDA #$03
+    STA remaining_sector_validation_failures
+    STA $CA
+    STA sync_run_track_counter
+	; -----------------------------------------------------------------
+	; Decrypt track index
+	; -----------------------------------------------------------------
+	; Compute a compact index used to look up the real track number:
+	;    track_index = (encrypted_track_index XOR #$55) AND #$BF
+	;
+	; How the index is used:
+	;  - The code does not use the index directly as a track number. Instead,
+	;    it uses the index as a key into a table that yields the actual
+	;    track number to seek.
+	;  - In this implementation the mapping is:
+	;       index  $00 → track $13  (decimal 19)
+	;       index  $01 → track $14  (decimal 20)
+	;       ...
+	;       index  $11 → track $23  (decimal 35)
+	;       index  $11+$06 → wraps → track $01  (example: index $11+$06 = $17 → track $01)
+	;--------------------------------
+    LDA encrypted_track_index
+    EOR #$55
+    AND #$BF
+    STA track_index
+	;--------------------------------
+    LDA #$0A                ;Set CLK OUT, DATA OUT
+    STA data_port_b
+	;Perform all copy protection validations
+    JSR validate_protections
+	;--------------------------------
+wrap_up:
+    PHP
+; Seek to track $12 (18) proactively — next file’s first sector is on track 18, so pre-seeking saves time.
+    LDA NEXT_TRACK_SEEK
+    JSR seek_to_track
+    PLP
+    BCS exit
+    LDA #$08
+    STA data_port_b
+exit:
+    JMP jump_to_code_and_reset
+;==================================================================
+; Top-level validator: try several attempts of a sync+validation routine,
+; then do additional run-length / timing validations before accepting.
+;---------------------------------------------
+validation_attempt_counter = $c5
+MAX_VALIDATION_ATTEMPTS = $32
+
+validate_byte_sync_runs:
+	;Try a maximum of $32 validation attempts before failing
+    LDA MAX_VALIDATION_ATTEMPTS
+    STA validation_attempt_counter
+next_byte_sync_run_validation:
+	; X = per-attempt threshold (passed to validator subroutine)
+    LDX #$32
+	;Validate we don't see a "byte sync missing" run more than 0x100 - 0x32 = 0xCE (206 decimal) times
+    JSR sync_byte_and_block_and_validate_byte_sync_runs
+	; If carry is clear => sub-check succeeded; branch to missing-run validation   
+    BCC validate_byte_sync_missing_run
+	; Sub-check failed: decrement attempt counter and retry until zero
+    DEC validation_attempt_counter
+    BNE next_byte_sync_run_validation
+	; If we ran out of attempts, branch to fail
+    BEQ fail
+	;---------------------------------------------
+validate_byte_sync_missing_run:
+	; Validate we don't see a "byte-sync missing" run > 255 (subroutine does the check)    
+    LDY #$00
+    JSR wait_for_block_sync_with_byte_count
+	; wait_for_block_sync_with_byte_count returns carry set on failure
+    BCS fail
+	;---------------------------------------------
+	;Store the "byte sync missing" run length in $00,X
+	; X is loaded from sync_run_track_counter
+    LDX sync_run_track_counter    
+    STY sync_run_counts,X
+	; Next: run a two-step validation:
+    ; 1) Ensure no byte-sync occurs for at least $7C iterations
+    ; 2) Ensure at least one byte-sync occurs before $38 iterations	
+    LDX #$7C
+    JSR validate_byte_sync_runs
+	; If that fails, go to fail
+	BCS fail
+	; If success, fall through and set X = $D2 for the next stage
+    LDX #$D2
+;==================================================================
+; Variant that first waits for one byte sync, then one block sync, then falls through
+; to the generic validate_byte_sync_runs logic (which expects X preloaded).
+;==================================================================
+sync_byte_and_block_and_validate_byte_sync_runs:
+	;Wait for one byte sync
+    CLV
+wait_for_byte_sync:
+    BVC wait_for_byte_sync	; loop while V == 0 (no byte)
+    CLV						; clear V to prepare for next detection
+	; Now wait for a block sync: poll disk_controller_register until bit7 indicates block sync
+wait_for_block_sync:
+    LDA disk_controller_register
+    BMI wait_for_block_sync
+; Fall through into validate_byte_sync_runs (no JSR here — the code just continues)
+;==================================================================
+; Validate byte sync runs
+;
+; Arguments:	.X	count for validation of condition #1
+; Return value:	carry set	failure
+;				carry clear	success
+;
+; 1 - validate that we don't observe any "byte sync" events before the count in .X expires
+; 2 - after 1 is verified, validate that we observe at least 1 "byte sync" event before #38 iterations
+;==================================================================
+validate_byte_sync_runs:
+	; Clear V so we can detect the next byte-sync edge (V will be set by hardware)  
+    CLV
+	
+	; -------- Part A: ensure NO byte-sync for X iterations --------
+check_for_byte_sync:
+    BVS fail		; if V already set => a byte-sync occurred too early → fail
+    DEX
+    BNE check_for_byte_sync
+	
+	; -------- Part B: ensure we DO see a byte-sync within 0x38 iterations --------
+    LDX #$38
+countdown_for_byte_sync:
+    DEX
+    BEQ fail		; if we exhausted the countdown we failed to observe a byte-sync					
+    BVC countdown_for_byte_sync	; if V = 0 (no byte sync detected this iteration) → continue countdown
+	
+	; If we get here, V = 1 → success - exit with carry clear
+    CLV
+    CLC
+    RTS
+fail:
+	;Failure - exit with carry set
+    SEC
+    RTS
+
+; =================================================================
+; validate_protections — disk/drive hardware & key validation sequence
+; =================================================================
+; Purpose
+;  - Perform a layered set of drive-level checks used as anti-tamper and
+;    copy-protection before proceeding to read critical game data.
+;  - Checks include: basic byte/block sync timing tests, presence of
+;    specific sectors, per-track byte-sync validation, a timing signature
+;    measurement on physical track 36, and three key comparisons against
+;    decrypted key values.
+;
+; High-level flow
+;  1) Step to the next track and run a byte-sync/block-sync timing check.
+;  2) If the PROTECTION_BYPASS_MASK bit is clear in the encrypted
+;     control words, run the full protection suite; otherwise use the
+;     short path (used by scene files / less-critical targets).
+;  3) validate_sectors:
+;       - Iterate the validation_sectors table and for each entry:
+;           • seek to the next track, set a per-search TIMEOUT, and try
+;             up to SECTOR_SEARCH_ATTEMPTS to find the sector header.
+;           • on timeout decrement remaining_sector_validation_failures.
+;       - Abort if too many validations fail.
+;  4) Run validate_byte_sync_runs across a number of subsequent tracks.
+;  5) Seek to TRACK_36, run validate_track_36, then configure controller
+;     outputs (density, motor, LED, step phase) and measure a "sync-run"
+;     count (returned via Y). Convert and range-check this measurement.
+;  6) Compare three decrypted keys against measured sync-run counts; each
+;     comparison enforces |measured - key| ≤ KEY_THRESHOLD. Any violation
+;     branches to fail/fail_2.
+;
+; Inputs (important zero page / memory locations)
+;  - encrypted_sector_number    : controls whether sector validations run
+;  - encrypted_track_index      : controls whether shorter path is used
+;  - validation_sectors         : table (.byte $02,$04,$06,$08,$0A,$01,$03,$05,$07,$09)
+;  - decrypted_keys (DECRYPTED_KEYS_ADDR + DECRYPTED_KEYS_OFFSET)
+;  - track_36_sync_count        : stored offset used when computing the track-36 result
+;
+; Return / side effects
+;  - Success: falls through to the next stage (read_all_sectors).
+;  - Failure: branches to fail / fail_2 with the carry set (caller resets/aborts).
+;  - Side effects: moves the head (seek_to_next_track/seek_to_track), modifies
+;    disk controller register (density + LED + motor + step bits), and reads
+;    disk controller status/timers. The code is timing- and hardware-dependent.
+;
+; Notes about tricky arithmetic & comparisons
+;  - The three-key test computes d = M - K then uses a compact two-branch trick
+;    to obtain |d| and checks |d| ≤ KEY_THRESHOLD. If any |M - K| > KEY_THRESHOLD
+;    the routine fails.
+;  - The track-36 measurement computes R = (255 - Y) + track_36_sync_count
+;    (equivalently track_36_sync_count - Y - 1 mod 256) and requires
+;    SYNC_MIN ≤ R ≤ SYNC_MAX. This is a timing signature check.
+;
+; =================================================================
+
+remaining_sector_validation_failures = $d5
+sync_run_counts = $00
+sector_validation_index = $be
+sync_run_track_counter = $bf
+decrypted_keys = $0200
+
+SECTOR_SEARCH_ATTEMPTS = $06
+START_SECTOR_INDEX = $09
+TIMEOUT = $50
+TRACK_36 = $24
+KEY_THRESHOLD = $20
+SYNC_MIN = $05
+SYNC_MAX = $46
+PROTECTION_BYPASS_MASK = $40
+
+validation_sectors:  .byte $02,$04,$06,$08,$0A,$01,$03,$05,$07,$09
+
+
+validate_protections:
+    JSR seek_to_next_track
+    JSR validate_byte_sync_runs
+    BCS fail
+	
+	; ---------------------------------------------
+	; For some targets (init screen & main game) full validations apply.
+	; Scene files skip these extra protection checks.
+    LDA encrypted_sector_number
+    AND PROTECTION_BYPASS_MASK
+    BNE validate_sectors
+    LDA encrypted_track_index
+    AND PROTECTION_BYPASS_MASK
+    BNE read_all_sectors
+	; ---------------------------------------------
+validate_sectors:
+	;Init sector validation index
+    LDX START_SECTOR_INDEX
+    STX sector_validation_index
+	
+next_sector_start_validation:
+	;Get the sector number for this validation (using the 'validation_sectors' lookup table)
+    LDX sector_validation_index
+    LDA validation_sectors,X
+    STA sector_number
+
+	;Seek to the next track 
+    JSR seek_to_next_track
+
+	;Set a timeout for the search
+    LDA TIMEOUT
+    STA timer_1_high_counter_disk
+
+	;Find the start of the validation sector
+    LDA SECTOR_SEARCH_ATTEMPTS
+    JSR find_sector_start_2
+
+    ; Timeout? Check timer 1 interrupt bit (bit6 of interrupt_flag_register_disk)
+    LDA interrupt_flag_register_disk
+    ASL A
+    BPL sector_validation_succeeded
+
+    ; Timed out: decrement remaining allowed failures, fail if exhausted
+    DEC remaining_sector_validation_failures
+    BMI fail
+
+sector_validation_succeeded:
+    DEC sector_validation_index
+    BPL next_sector_start_validation
+
+	; ---------------------------------------------
+	; Validate byte sync runs in the next tracks
+next_track:
+    JSR validate_byte_sync_runs
+    JSR seek_to_next_track
+    DEC sync_run_track_counter
+    BNE next_track
+
+	; Validate track 36 and decrypt keys
+    LDA TRACK_36
+    JSR seek_to_track
+    JSR validate_track_36
+    BCS fail
+
+	; ---------------------------------------------
+	;Set density select bits to 01, the correct density for the next timing validations
+	;Set LED on, motor on, set head step control phase to 10
+    LDA #$2E
+    STA disk_controller_register
+	
+	; Measure a sync-run value for track 36
+    LDY #$00
+    CLV
+wait_for_byte:
+    BVC wait_for_byte
+    CLV
+    JSR wait_for_block_sync_with_byte_count
+
+	;The result is returned in .Y, copy it to .A
+    TYA
+	;Take one's complement	 and add it to the track 36 sync count
+    EOR #$FF
+    ADC track_36_sync_count
+
+	;Validate that the result falls between #05 and #46 - if it doesn't, fail
+	;This check is where the unpatched image fails
+    CMP SYNC_MIN
+    BCC fail
+    CMP SYNC_MAX
+    BCS fail
+
+	; ---------------------------------------------
+	; Validate 3 keys vs. the measured sync run length (absolute difference <= $20)
+
+	;Use .X as check index
+    LDX #$03
+	;Use .Y as key offset
+    LDY #$1A
+
+compare_key_with_run_length:
+	;Subtract the key from the sync run length
+    LDA sync_run_counts,X
+    SEC
+    SBC decrypted_keys,Y
+    BMI validate       ; if negative, jump to validate (we take abs below)
+
+    ; positive: take two's complement to get absolute value
+    EOR #$FF
+    CLC
+    ADC #$01
+
+validate:
+	;Add the threshold and verify it's positive
+	;If so, the absolute difference is within the threshold and the check succeeds
+	;If not, the check failed. The addition result is negative, the N bit is set, so the BMI is taken.
+    CLC
+    ADC KEY_THRESHOLD
+    BMI fail_2
+
+	;Check succeeded - move to next key, decrement the check counter
+    INY
+    DEX
+    BNE compare_key_with_run_length
+
+	; If we reach here, all protection checks passed and code falls through to read_all_sectors
+	;Fall through to the routine that will read all sectors
+
+
+;==================================================================
+; read_all_sectors
+;
+; Purpose
+;  - Iterate over a predefined list of tracks (track_list) and read every
+;    sector from each track in sequence, decrypting the requested
+;    sector number first. For each sector it calls the lower-level
+;    `read_and_send_sector` routine which performs the raw read,
+;    validation and prepares data for transmission.
+;
+; High-level behavior
+;  1) Compute `sector` = (encrypted_sector_number XOR $AA) & $BF.
+;  2) For the current index into `track_list`:
+;       a) Seek to the track from the table.
+;       b) Loop calling `read_and_send_sector` for successive sector
+;          numbers on that track.
+;       c) After each successful read, check `combination`'s bit7:
+;          if bit7 set → finished (success exit).
+;       d) Otherwise increment `sector`. If `sector` still falls
+;          within the configured `sectors_per_track` for that track,
+;          continue; else reset `sector` to 0, increment track_index
+;          and proceed to the next track in `track_list`.
+;  3) On any read error `read_and_send_sector` signals failure with
+;    the carry set; the routine will return with that carry set.
+;
+; Inputs / zero-page
+;  - encrypted_sector_number  (used to produce start `sector`)
+;  - track_index ($C2)        (index into track_list; advanced on track wrap)
+;  - track_list (table of track numbers)
+;  - sectors_per_track ($D4)  (set by seek_to_track after stepping)
+;  - combination ($BA)        (set by reader; bit7 acts as final/stop flag)
+;
+; ==================================================================
+track_index = $c2
+track_list = $07bc
+sector = $23
+sectors_per_track = $d4
+combination = $ba
+
+track_list = .byte $13,$14,$15,$16,$17,$18,$19,$1A
+    .byte $1B,$1C,$1D,$1E,$1F,$20,$21,$22
+    .byte $23,$01,$02,$03,$04,$05,$06,$07
+    .byte $08,$09,$0A,$0B,$0C,$0D,$0E,$0F
+    .byte $10
+
+read_all_sectors:
+
+	;--------------------------------
+	; Decrypt sector number
+	;
+	; sector = (encrypted_sector_number XOR #AA) & #BF
+	;--------------------------------
+    LDA encrypted_sector_number		
+    EOR #$AA
+    AND #$BF
+    STA sector
+
+seek_to_track_for_index:
+	;Load read track number from the track table
+    LDX track_index
+    LDA track_list,X
+	;Seek to that track
+    JSR seek_to_track
+
+read_track:
+    JSR read_and_send_sector
+	;Was there an error during the operation? If so, exit with carry set
+    BCS exit
+	;Is bit 7 of combination set? If so, we're done, exit successfully
+    LDA combination
+    BMI exit_success
+    INC sector
+	
+	;Did we reach the last sector of this track?
+    LDA sectors_per_track
+    CMP sector
+	;If not, continue
+    BCS read_track
+	
+	;We reached the last sector
+	;Set sector to #00, go to next track
+    LDA #$00
+    STA sector
+    INC track_index
+    BNE seek_to_track_for_index
+exit_success:
+    CLC
+exit:
+    RTS
+
+;==================================================================
+; Wait-for-block-sync-with-byte-count
+;
+; Purpose
+;  - Wait until a block-sync (SYNC) is observed, while counting
+;    incoming *byte* events. If the byte-event count wraps (8-bit overflow)
+;    before a block-sync appears, the routine reports failure.
+;
+; Contract / calling convention
+;  - Input:
+;      .Y = starting byte-event counter (caller may initialize to $00)
+;        The routine increments Y on each detected *byte* event.
+;  - Output:
+;      Carry = 0 → success (block-sync seen before counter wrapped)
+;      Carry = 1 → failure (counter wrapped to $00 at least once before block-sync)
+;      .Y = final counter value (mod 256) at return
+;  - Flags:
+;      The routine uses the CPU overflow flag (V) as the *byte event*
+;      indicator (clears V with CLV, waits for V to be set by hardware).
+;      It reads disk_controller_register and inspects bit 7 (sign/N) for
+;      the *block-sync* indicator.
+;
+; How it works
+;  - Loop:
+;      1) Sample disk_controller_register:
+;           - If bit 7 indicates block-sync (i.e. sign bit clear → BPL),
+;             return immediately (Carry unchanged).
+;      2) Wait for a *byte event* (implementation uses CPU V as that signal).
+;      3) On a byte event, INY (increment the 8-bit counter).
+;         - If Y becomes $00 (i.e. wrapped), set Carry to signal overflow,
+;           then continue waiting for block-sync.
+;      4) Clear V and repeat.
+;
+; Hardware signals (observations)
+;  - Block-sync: read from disk_controller_register bit 7 (sign/N).
+;      The code treats "bit7 clear" as block-sync present (BPL → success).
+;  - Byte-sync: detected via the CPU overflow flag (V). The routine polls
+;      with BVC/BVS and clears V (CLV) between detections to implement edge
+;      detection of byte arrivals.
+;
+;==================================================================
+wait_for_block_sync_with_byte_count:
+    CLC
+check_for_block_sync:
+    LDA disk_controller_register
+    ; If block SYNC detect line bit is clear, we found a block sync — return
+    BPL exit
+    ; No block sync detected.
+    ; If we detected a new byte, continue - otherwise wait for a new byte.
+    BVC check_for_block_sync
+    ; We detected a new byte, so increment the "count to 0x100" in Y
+    INY
+    ; Did we wrap around and reach #00? If not, loop again
+    BNE loop_again
+    ; We exhausted the count — set carry to record overflow and continue looping
+    SEC
+loop_again:
+    ; Clear the byte-sync flag and loop again
+    CLV
+    BVC check_for_block_sync
+exit:
+    RTS
+
+;==================================================================
+; Read a sector and send it over the serial bus
+;
+; Purpose
+;  - Locate a sector on the disk, read its raw bytes into three output
+;    buffers, validate the data via a checksum, and compute the 16-bit
+;    total byte count (total_bytes_to_send_hi/lo) that will be transmitted.
+;
+; High-level flow
+;  1) Try up to MAX_ATTEMPTS to:
+;       a) locate the sector header (find_sector_start);
+;       b) read the raw sector stream (read_another_byte + byte loop);
+;       c) compute and verify a checksum derived from the received bytes;
+;       d) extract / compute the transmit length and store it in total_bytes_to_send_hi/lo.
+;  2) On checksum or read failure, retry until attempts are exhausted.
+;  3) On final failure set the carry (SEC) and return to the caller.
+;
+; Key data & buffers (zero page / fixed addresses)
+;  - attempt_counter            = $C6    ; retry counter (initialized to $0A)
+;  - total_bytes_to_send_hi/lo  = $B5/$B6; 16-bit send length computed after validation
+;  - checksum                   = $B7    ; running XOR checksum
+;  - area_1 = $017C, area_2 = $023E, area_3 = $0300  ; three receive buffers
+;  - penultimate/last byte labels are used for checksum and size extraction:
+;      penultimate_byte_of_area_1 ($023C), last_byte_of_area_1 ($023D)
+;      penultimate_byte_of_area_2 ($02FE), last_byte_of_area_2 ($02FF)
+;      penultimate_byte_of_area_3 ($03C0), last_byte_of_area_3 ($03C1)
+;
+; Read loop & counts
+;  - The outer index Y runs from 0 .. $C1 (CPY #$C2) — that is 194 iterations.
+;  - Each iteration reads four raw bytes in sequence:
+;      1) a checksum-only byte (XORed into running checksum, not stored),
+;      2) a byte stored into area_1[Y],
+;      3) a byte stored into area_2[Y],
+;      4) a byte stored into area_3[Y].
+;  - Therefore:
+;      * Stored payload bytes = 194 iterations × 3 stored bytes = 582 bytes.
+;      * Raw bytes consumed/read = 194 × 4 = 776 bytes.
+;
+; Checksum & validation
+;  - Running checksum initialized to $6B and updated by XOR for every consumed byte
+;    (including the per-iteration checksum-only byte and the three stored bytes).
+;  - After the read loop the checksum is combined with the final bytes of area_2/3
+;    via dibit_pack_4310; the produced packed byte must match the running checksum.
+;  - On mismatch the attempt fails and the routine retries (or signals final failure).
+;
+; Post-validation: compute send length
+;  - The code calls dibit_pack_4310 on specific penultimate/last bytes to derive
+;    the two-byte transmit length:
+;      total_bytes_to_send_hi ← (combination & 1)
+;      total_bytes_to_send_lo ← packed_value (from another pair)
+;
+; Return / failure semantics
+;  - On success (checksum ok & length computed) execution continues to the sender.
+;  - On persistent failure (attempts exhausted or fatal read error) the routine
+;    sets Carry (SEC) and returns (RTS) as a failure signal to the caller.
+;
+;==================================================================
+attempt_counter = $c6
+total_bytes_to_send_hi = $b5
+total_bytes_to_send_lo = $b6
+checksum = $b7
+
+area_1 = $017C
+area_2 = $023E
+area_3 = $0300
+
+penultimate_byte_of_area_1 = $023c
+last_byte_of_area_1 = $023d
+penultimate_byte_of_area_2 = $02fe
+last_byte_of_area_2 = $02ff
+penultimate_byte_of_area_3 = $03c0
+last_byte_of_area_3 = $03c1
+
+MAX_ATTEMPTS = $0A
+INITIAL_CHECKSUM = $6B
+READ_ITERATIONS = $C2
+
+	;-------------------------------------------
+	; Note: this is not the entry point
+	;
+	; Check if there are read attempts remaining or exit signaling a failure with the carry set
+	;-------------------------------------------
+next_attempt:
+    DEC attempt_counter
+	; Did we exhaust the number of attempts?
+    BPL do_attempt
+fail_2:
+	; If so, set carry and exit
+    SEC
+    RTS
+
+	;-------------------------------------------
+	; Entry point of the routine
+	;-------------------------------------------
+read_and_send_sector:
+	; Do a maximum of #0A read attempts
+    LDA MAX_ATTEMPTS
+    STA attempt_counter
+
+do_attempt:
+	; Find the start of the sector
+	; On return, carry is clear on success, set on failure
+    JSR find_sector_start
+	; Did we find it? If not, try again
+    BCS next_attempt
+	; If so, continue
+    JSR read_another_byte
+
+	; Initialize checksum with a value of #6B
+    LDA INITIAL_CHECKSUM
+	; Use .Y as write index
+    LDY #$00
+
+	; Wait for the next byte - just XOR it with the running checksum (it's not used as data)
+wait_for_byte_a:
+    BVC wait_for_byte_a
+    CLV
+    EOR data_port_a_disk_head
+    STA checksum
+	;-------------------------------------------
+	; Wait for the next byte - store it in area_1
+wait_for_byte_b:
+    BVC wait_for_byte_b
+    CLV
+    LDA data_port_a_disk_head
+    STA area_1,Y
+	; Update running checksum
+    EOR checksum
+    STA checksum
+	;-------------------------------------------
+	; Wait for the next byte - store it in area_2
+wait_for_byte_c:
+    BVC wait_for_byte_c
+    CLV
+    LDA data_port_a_disk_head
+    STA area_2,Y
+	; Update running checksum
+    EOR checksum
+    STA checksum
+	;-------------------------------------------
+	; Wait for the next byte - store it in area_3
+wait_for_byte_d:
+    BVC wait_for_byte_d
+    CLV
+    LDA data_port_a_disk_head
+	; This will overwrite the $0300 buffer that had previous code
+    STA area_3,Y
+	; Update running checksum
+    EOR checksum
+    STA checksum
+
+    INY
+	; More bytes pending? If so, loop
+	; Otherwise continue (194 * 3 = bytes read in total; the last 2 of each area are used for checksum validation and size calculation)
+    CPY READ_ITERATIONS
+    BNE wait_for_byte_b
+	;-------------------------------------------
+	; Update checksum XOR'ing with the last bytes of areas 2 and 3
+    EOR last_byte_of_area_3
+    EOR last_byte_of_area_2
+    STA checksum
+
+    LDX last_byte_of_area_2
+    LDA last_byte_of_area_3
+    JSR dibit_pack_4310
+    CMP checksum
+	; If the checksum doesn't match, fail the attempt
+	; In patched copies, the BNE is is patched out with NOPs
+	;    NOP
+	;    NOP
+    BNE next_attempt
+
+    LDX penultimate_byte_of_area_1
+    LDA penultimate_byte_of_area_2
+    JSR dibit_pack_4310
+    STA combination
+    AND #$01
+    STA total_bytes_to_send_hi
+
+    LDX penultimate_byte_of_area_3
+    LDA last_byte_of_area_1
+    JSR dibit_pack_4310
+    STA total_bytes_to_send_lo
+
+;Fall through to next routine
+;==================================================================
+; send_bytes_over_serial
+;
+; Purpose
+;  - Take groups of three source bytes (unpacked_data_1, _2 and _3),
+;    extract a specific ordered set of 2-bit fields (four "bit pairs")
+;    from them, and transmit those pairs over the drive↔computer serial
+;    port using a simple two-step handshaked write for each pair.
+;
+; High-level behavior
+;  - For each byte position Y:
+;      * read the 3 source bytes at offsets Y from the three buffers;
+;      * compute four bit-pair masks (bit_pair_1..4) derived from those bytes;
+;      * send bit_pair_1, bit_pair_2, bit_pair_3, bit_pair_4 in that order,
+;        using data_port_b to handshake with the host for each pair;
+;      * decrement total_bytes_to_send (16-bit: hi/lo); when it reaches 0,
+;        stop sending and return success.
+;  - Each bit-pair is represented as an 8-bit mask, but only bits 4 and 3
+;    (mask $18) are actually used on the bus — the other bits are ignored.
+;
+; Bit encoding (mask -> transmitted 2-bit value)
+;  - Sent mask (masked with $18)  →  interpreted data bits (first..second)
+;      $00  ->  11
+;      $08  ->  10
+;      $10  ->  01
+;      $18  ->  00
+;  - In other words, the two wired bits encode the pair value using this
+;    non-linear mapping; see the detailed bit-slice analysis for derivation.
+;
+; Ordering / pairing note
+;  - The 3 source bytes produce 24 bits; the routine selects 16 of those
+;    bits (skipping one bit per three-bit group) and emits them in groups
+;    of two (bit pairs). See "08c - bit slice analysis.txt" for the exact
+;    selection pattern and why these particular nibble rotations are used.
+;
+; Handshake & timing quirks
+;  - The code uses a two-stage bus-change handshake:
+;      1) set DATA OUT / CLK OUT on data_port_b to indicate a pending pair;
+;      2) wait for the host to toggle data_port_b (poll loop);
+;      3) once changed, load the next pair and wait for the host to toggle again;
+;      4) finally write the pair to the bus.
+;  - For timing reasons some instructions are deliberately interleaved:
+;      * saving bit_pair_2 is done together with asserting DATA OUT;
+;      * pulling bit_pair_1 from the stack is interleaved with waiting for
+;        the port to change; and so on.
+;    These reorderings reduce latency between the observed handshake edge
+;    and the actual write, which matters for tight IEC timing.
+;
+; Counters & termination
+;  - total_bytes_to_send_hi/lo: 16-bit countdown of bytes to be sent (hi/lo).
+;  - byte_counter_in_pair: counts 2 transmissions per outer iteration (pair loop).
+;  - The routine loops over Y until total_bytes_to_send == 0 or the
+;    counters indicate exit; it returns with Carry clear on success.
+;
+;==================================================================
+total_bytes_to_send_hi = $b5
+total_bytes_to_send_lo = $b6
+byte_counter_in_pair = $c5
+
+; Four data bit pairs to be sent over the serial bus for each byte transmitted.
+; Note: bit_pair_1 lives on the stack and is not stored in zero page.
+bit_pair_2 = $29
+bit_pair_3 = $0618    ; inlined in the code (zero-page alias shown for clarity)
+bit_pair_4 = $061f    ; inlined in the code (zero-page alias shown for clarity)
+
+unpacked_data_1 = $017C
+unpacked_data_2 = $023E
+unpacked_data_3_ptr = $c9
+
+PAIR_MASK     = $18
+
+send_bytes_over_serial:
+	; Use .Y as byte index / counter
+    LDY #$00
+next_byte_pair:
+    LDA #$02
+    STA byte_counter_in_pair
+
+	; --------------------------------
+	; Setup the 4 bit pairs for the current byte (bit_pair_1..4)
+	; They will be stored into bit_pair_1/2/3 and on the stack.
+	; See external analysis for how the unpacked bytes are derived.
+	; --------------------------------
+
+	; Compute bit_pair_3 and save it
+    LDA unpacked_data_1,Y
+    ASL A
+    STA bit_pair_3
+
+	; Compute bit_pair_4 and save it
+    ROR A
+    ROR A
+    ROR A
+    STA bit_pair_4
+
+	; Compute bit_pair_1 (saved to stack)
+    ROL A
+    LDA unpacked_data_2,Y
+    ROR A
+    PHA                ; bit_pair_1 on stack
+
+	; Compute bit_pair_2 (temporarily in A)
+    LSR A
+    LSR A
+    LSR A
+
+	; --------------------------------
+save_bit_pair_2_and_handshake:
+	; Begin handshake: set DATA OUT on serial bus
+    LDX #$02
+    STX data_port_b
+
+	; Save bit_pair_2 computed earlier
+    STA bit_pair_2
+
+	; Read current bus state into X (to detect change)
+    LDX data_port_b
+
+	; Pull bit_pair_1 from the stack into A
+    PLA
+
+	; Wait for the serial bus to change (handshake part 2)
+wait_for_port_change:
+    CPX data_port_b
+    BEQ wait_for_port_change
+
+	; Once port changed, send the bit pairs
+    BNE send_bit_pairs_over_serial_bus
+
+	; --------------------------------
+	; Compute bit pairs for the second byte of the pair
+compute_bit_pairs_for_second_byte:
+	; Compute bit_pair_4 and save it
+    LDA unpacked_data_2,Y
+    ASL A
+    ASL A
+    STA bit_pair_4
+
+	; Compute bit_pair_2 and save in X
+    LDA (unpacked_data_3_ptr),Y
+    TAX
+
+	; Compute bit_pair_1 (push to stack)
+    ROL A
+    ROL A
+    ROL A
+    PHA
+
+	; Compute bit_pair_3 and save it
+    ROL A
+    ROL A
+    ROL A
+    STA bit_pair_3
+
+	; Recover bit_pair_2 into A (from X)
+    TXA
+	; TXA sets Z if A == 0 (never zero for valid values), so BNE is always taken
+    BNE save_bit_pair_2_and_handshake
+
+	; --------------------------------
+	; Send the 4 bit pairs to the serial bus in order: bit_pair_1, bit_pair_2, bit_pair_3, bit_pair_4
+	; Every bit_pair is masked with #$18 so only bits 4 and 3 are driven onto the bus.
+send_bit_pairs_over_serial_bus:
+    AND PAIR_MASK            ; mask A (bit_pair_1) to bits 4..3
+
+wait_for_port_change_2:
+    CPX data_port_b
+    BNE wait_for_port_change_2
+
+	; Send bit_pair_1
+    STA data_port_b
+
+	; Send bit_pair_2
+    LDA bit_pair_2
+    AND PAIR_MASK
+    STA data_port_b
+
+	; Send bit_pair_3 (inlined load)
+    LDA bit_pair_3
+    AND PAIR_MASK
+    STA data_port_b
+
+	; Send bit_pair_4 (inlined load)
+    LDA bit_pair_4
+    AND PAIR_MASK
+    STA data_port_b
+
+	; --------------------------------
+	; Clock the serial lines and update total_bytes_to_send counters
+    LDA #$0A            ; set CLK OUT, DATA OUT mask
+    DEC total_bytes_to_send_lo
+    STA data_port_b     ; drive bus for this byte-pair
+
+    BNE next_cycle
+    ; low part became zero -> decrement high part
+    DEC total_bytes_to_send_hi
+    BMI exit            ; if high went negative (sign) treat as finished
+
+next_cycle:
+    DEC byte_counter_in_pair
+    BNE compute_bit_pairs_for_second_byte
+
+	; byte_counter_in_pair reached zero -> we finished the pair; advance Y (next byte index)
+    INY
+    BNE next_byte_pair
+
+exit:
+    CLC
+    RTS
+
+;==================================================================
+; find_sector_start
+; -----------------------------------------------------------------
+; Purpose
+;  - Locate the start of a sector by searching the raw byte stream
+;    for a custom 7-byte sector header instead of using the standard
+;    GCR+SYNC mechanism.
+;
+; What it does
+;  1) Build two 24-bit bitstreams derived from the current track and the
+;     target sector (via build_bitstream) and copy them into zero-page
+;     buffers. These are used to assemble the expected 7-byte header.
+;  2) Set expected_header[0] = $75 (first header byte). The remaining
+;     expected bytes are derived from the prepared bitstream buffers.
+;  3) Read raw bytes from the disk head one at a time and compare them
+;     to the expected header bytes in sequence. If all 7 bytes match
+;     consecutively, return success (Carry clear). If the search exhausts
+;     a fixed number of attempts, return failure (Carry set).
+;
+; Key properties
+;  - This is a byte-pattern search on raw disk data (no SYNC/GCR decode).
+;  - The search is bounded: `iteration_cnt` limits how many mismatches are
+;    allowed before giving up (initialized to $5A here).
+;  - Return: Carry clear = found; Carry set = not found (exhausted attempts).
+;==================================================================
+sector_number = $23
+iteration_cnt = $c5
+track_sector_bitstream = $2a
+track_sector_xor_bitstream = $2d
+expected_sector_header = $29
+
+SEARCH_ATTEMPTS = $5A
+HEADER_LEN = $07
+HEADER_START_BYTE = $75
+
+find_sector_start:
+	;By default, do a total of SEARCH_ATTEMPTS attempts to find the sector header
+    LDA SEARCH_ATTEMPTS
+find_sector_start_2:    ; alternate entry point (supplying a custom argument in A)
+    STA iteration_cnt
+
+	;--------------------------------
+	; Create a 24-bit bitstream from the track and sector numbers
+	; .A = track number
+	; .X = sector number
+    LDA sector_number
+    TAX
+    LDA track_under_head
+    JSR build_bitstream
+
+	; Copy the generated bitstream -> track_sector_bitstream
+    LDX #$02
+bitstream_copy_1:
+    LDA bit_stream_1,X
+    STA track_sector_bitstream,X
+    DEX
+    BPL bitstream_copy_1
+
+	;--------------------------------
+	; Create another 24-bit bitstream from the track and sector numbers, but this time:
+	; .A = sector XOR track XOR #96
+	; .X = #96
+    LDA sector_number
+    EOR track_under_head
+    EOR #$96
+    LDX #$96
+    JSR build_bitstream
+
+	; Copy the generated bitstream -> track_sector_xor_bitstream
+    LDX #$02
+bitstream_copy_2:
+    LDA bit_stream_1,X
+    STA track_sector_xor_bitstream,X
+    DEX
+    BPL bitstream_copy_2
+
+	;--------------------------------
+	; The first sector header byte is always #75
+    LDA HEADER_START_BYTE
+    STA expected_sector_header
+
+	;--------------------------------
+find_matches:
+	; Use .X as match counter
+    LDX #$00
+    JSR read_another_byte
+
+wait_for_another_byte:
+    BVC wait_for_another_byte
+    CLV
+
+	; Get the byte from the disk head and compare it with the expected byte
+    LDA data_port_a_disk_head
+    CMP expected_sector_header,X
+
+	; Do they match? If not, there's a mismatch
+    BNE header_mismatch
+
+	; Match found - increment the match count
+    INX
+
+	; Did we find all matches of the expected sector header? If not yet, continue
+    CPX HEADER_LEN
+    BNE wait_for_another_byte
+
+	; All matches found, clear carry to indicate success and exit
+    CLC
+    RTS
+
+header_mismatch:
+    DEC iteration_cnt
+
+	; Did we exhaust all iterations? If not, keep searching
+    BNE find_matches
+
+	; We exhausted all iterations, set carry to indicate failure and exit
+    SEC
+    RTS
+
+;==================================================================
+; read_another_byte
+
+; Attempt to read one raw byte from the disk head with a small retry loop.
+; On success: returns with A = the byte read from data_port_a_disk_head.
+; On repeated timeout failure: sets Carry and jumps to wrap_up (caller error path).
+;==================================================================
+
+counter = $d6
+READ_ATTEMPTS = $20
+READ_TIMER_INIT = $FF
+
+read_another_byte:
+    LDA READ_ATTEMPTS
+    STA counter            ; attempts left (32)
+
+next_count:
+    LDA READ_TIMER_INIT
+    STA timer_1_high_counter_serial   ; start/restart a short countdown timer
+
+check_timer:
+    BIT timer_1_high_counter_serial   ; test timer high byte
+    BPL timeout           ; if timer high bit = 0 -> timer expired -> handle timeout
+
+    BIT disk_controller_register      ; sample disk controller status
+    BMI check_timer       ; while bit7 = 1 (no byte available yet), keep polling
+
+    LDA data_port_a_disk_head         ; byte ready — read it
+    CLV                    ; clear overflow/byte-sync flag (edge detection)
+    RTS                    ; success return (A contains the byte)
+
+timeout:
+    DEC counter             ; timer expired this attempt — decrement attempts
+    BPL next_count          ; if counter >= 0, try again
+
+    ; attempts exhausted
+    SEC                     ; indicate failure via Carry
+    JMP wrap_up             ; caller's failure/reset path
+
+;==================================================================
+; seek_to_next_track
+;
+; Purpose:
+;  - Advance the drive head by one physical track.
+;
+; Entry:
+;  - Implicit: A is not used by the wrapper; this routine is a thin
+;    wrapper that computes desired track = track_under_head + 1 and 
+;	 falls through to seek_to_track (which performs the actual stepping).
+;==================================================================
+seek_to_next_track:
+	LDX track_under_head
+	INX
+	TXA
+;==================================================================
+; seek_to_track
+;
+; Seek the drive head to the requested track.
+;
+; Entry: A = desired track number
+;
+; Effects:
+;  - Steps the head until track_under_head == desired_track.
+;  - Updates track_under_head, sets sectors_per_track and disk controller density bits.
+;
+; Notes:
+;  - head_steps = 2 * (desired - current) (ROM step routine expects this encoding).
+;  - ROM step routine at $FA2E is used to perform the atomic step operations.
+;  - Thresholds $13 and $20 select sectors-per-track and density modes.
+;==================================================================
+head_steps = $4a
+track_under_head = $22
+desired_track = $c0
+step_head_routine = $fa2e
+SEEK_DELAY = $16
+
+seek_to_track:
+    STA desired_track
+    ; Subtract desired_track - track_under_head  -> A = desired - current
+    SEC
+    SBC track_under_head
+    ; Are they equal? If so, the head is already in place
+    BEQ head_in_place
+    ; Double the difference: head_steps = 2 * (desired - current)
+    ASL A
+    STA head_steps
+
+step_head:
+    ; Call ROM step routine (expects step count in A / zero page head_steps used by ROM)
+    JSR step_head_routine
+    ; Wait a short time for the step(s) to take effect
+    LDX SEEK_DELAY
+    JSR wait_for_timer
+    ; If head_steps still non-zero, step again
+    LDA head_steps
+    BNE step_head
+
+head_in_place:
+    ; Update cache of track currently under head
+    LDX desired_track
+    STX track_under_head
+
+    ; Set density/disk-controller bits (prepare controller register) for the next read operations
+	; The density is set to 11b
+    LDA disk_controller_register
+    ORA #$60
+
+    ; Choose sectors-per-track based on track number (thresholds at $13 and $20)
+    CPX #$13
+    BCS track_ge_0x13
+    ; track < $13 => sectors_per_track = $0B
+    LDX #$0B
+    BNE update_controller
+
+track_ge_0x13:
+    CPX #$20
+    BCS track_ge_0x20
+    ; For $13 <= track < $20 clear bit 5 of controller (AND with $DF)
+    AND #$DF
+
+track_ge_0x20:
+    ; track >= $13 => sectors_per_track = $0A
+    LDX #$0A
+
+update_controller:
+    ; Store sectors_per_track and write controller register back
+    STX sectors_per_track
+    STA disk_controller_register
+
+;Fall through to sleep a bit (it should have returned directly, but the sleep doesn't hurt)
+;==================================================================
+; wait_for_timer
+;
+; Set timer_1 (high counter) from X, then wait until the serial interrupt
+; flag's bit 6 becomes set. After the wait, configure VIA2 PCR and return.
+;==================================================================
+wait_for_timer:
+    ; Store X into the timer high counter (start the countdown)
+    STX timer_1_high_counter_serial
+
+wait_for_timer_interrupt:
+    ; Load serial interrupt flag register
+    LDA interrupt_flag_register_serial
+    ; Shift left so bit 6 moves into the sign (N) position
+    ASL A
+    ; Branch while the sign bit is clear — i.e. loop while original bit 6 == 0
+    BPL wait_for_timer_interrupt
+
+    ; On exit from the wait, configure VIA2 PCR (peripheral control)
+	; Set CB2 and CA2 Controls to High output
+	; Set CA1 and CA2 interrupt controls to negative active edge
+    LDA #$EE
+    STA via2_peripheral_control_register
+
+    RTS
+
+;==================================================================
+; build_bitstream
+;
+; Build a 24-bit bitstream from two input bytes (X and A):
+; Input:  A = byte2, X = byte1 (caller sets these before JSR)
+; Output: bit_stream_1 (high byte), bit_stream_2 (mid byte), bit_stream_3 (low byte)
+;
+; Operation:
+;  - Decompose the two input bytes into four nibbles (processed in order).
+;  - For each nibble, look up a 6-bit code via 4_to_6_bit_sequences.
+;  - Concatenate the four 6-bit codes (4×6 = 24 bits) into the three output bytes,
+;    shifting the 24-bit accumulator left 1 bit per cycle and injecting bits
+;    from the code byte (A) via the carry flag.
+;
+;==================================================================
+; 4→6 lookup table: maps 16 possible 4-bit nibbles → 6-bit token (in low 6 bits)
+4_to_6_bit_sequences:
+    .byte $24, $25, $26, $27, $2C, $2D, $2E, $2F
+    .byte $34, $35, $36, $37, $3C, $3D, $3A, $3B
+
+build_bitstream:
+    LDY #$02           ; process two bytes: X and A
+
+	; --- push A and high-nibble(A); then switch A<-X and repeat ---
+save_nibbles:
+    PHA                ; push full byte (for later low-nibble extraction)
+    LSR A
+    LSR A
+    LSR A
+    LSR A              ; now A contains the original high nibble in low 4 bits
+    PHA                ; push high nibble
+    TXA                ; move X into A for the next iteration
+    DEY
+    BNE save_nibbles
+
+	; Now stack (top -> bottom):
+	;   high_nibble_of_X
+	;   full_X
+	;   high_nibble_of_A
+	;   full_A
+
+	; Build the 24-bit stream by pulling saved entries from the stack
+    LDY #$04           ; four saved entries (nibbles) to process
+
+next_nibble:
+    PLA                ; pull one saved value (top of stack)
+    AND #$0F           ; mask low nibble (we only need 4 bits)
+    TAX                ; index = nibble value
+    LDA 4_to_6_bit_sequences,X  ; get 6-bit code (in A)
+
+    LDX #$06           ; emit 6 bits from this code into the 24-bit accumulator
+
+    ROL A              ; rotate twice first to align bits (see note below)
+    ROL A
+
+rotation_cycle:
+    ROL A              ; shift code left; bit7 -> C
+    ROL bit_stream_3   ; shift accumulator low byte left; carry -> bit0
+    ROL bit_stream_2   ; propagate carry into mid byte
+    ROL bit_stream_1   ; propagate carry into high byte
+    DEX
+    BNE rotation_cycle
+
+    DEY
+    BNE next_nibble
+    RTS
+
+;==================================================================
+; dibit_pack_4310
+;
+; Pack two bytes into one by selecting two 2-bit fields (dibits) from each
+;
+; Purpose
+;  - Take two input bytes and produce a single packed byte composed of
+;    two dibits from the second byte (X) followed by two dibits from the
+;    first byte (A). This compresses selected bit-pairs into one byte.
+;
+; Selection rule
+;  - From each input byte take the dibits at bit positions:
+;      * high dibit: bits 4..3
+;      * low  dibit: bits 1..0
+;  - Pack result as (MSB → LSB):
+;      x4 x3  x1 x0  a4 a3  a1 a0
+;    where xN are bits from the X input, aN are bits from the A input.
+;
+; Calling convention
+;  - Inputs:
+;      A = first input byte  (provides a4,a3,a1,a0)
+;      X = second input byte (provides x4,x3,x1,x0)
+;  - Output:
+;      A = packed result byte (also stored to zero-page temp during building)
+;
+; Example
+;  - If X = %x7 x6 x5 x4 x3 x2 x1 x0 = %0011 0011  (0x33)
+;    and A = %a7 a6 a5 a4 a3 a2 a1 a0 = %0001 0110  (0x16)
+;    then result = %0 1 1 1  1 0 1 0 = 0x7A
+;
+;==================================================================
+temp = $24
+
+dibit_pack_4310:
+	;Save bits 1 and 0 of .A
+    TAY
+    AND #$03
+    STA temp
+
+	;Save original bits 4 and 3 of .A shifted right - we're dropping original bit 2
+    TYA
+    LSR A
+    AND #$0C
+    ORA temp
+    STA temp
+
+	; Save original bits 4 and 3 of .X shifted left 3 times (to positions 7 and 6)
+    TXA
+    ASL A
+    ASL A
+    ASL A
+    TAX            ; X = x4 x3 x2 x1 x0 #0 #0
+    AND #$C0
+    ORA temp
+    STA temp
+
+	;Take original bits 1 and 0 of .X, shift them left once (to positions 5 and 4)
+    TXA
+    AND #$18
+    ASL A
+    ORA temp
+
+	;The resulting bitmask is: x4 x3 x1 x0 a4 a3 a1 a0
+    RTS
+
+; ==================================================================
+; validate_track_36
+; ==================================================================
+; Purpose
+;  - Read an encrypted key block from physical track 36, verify its
+;    checksum, and decrypt a sequence of keys used by the protection
+;    checks. On success the decrypted keys are written to RAM (decrypted_keys).
+;
+; High-level flow
+;  1) Try up to ATTEMPT_COUNTER attempts:
+;      a) Read 0x36 (54) bytes from the drive into the encrypted_keys buffer.
+;      b) Measure a block-sync-derived count (track_36_sync_count).
+;      c) Compute a running checksum over the read bytes and verify it
+;         using the last two bytes packed via dibit_pack_4310.
+;      d) If checksum ok, iterate a decryption routine:
+;           - Load small windows of the encrypted block into the bit_stream
+;           - Rotate/permute the bit_stream multiple times to derive a
+;             single decrypted output byte and write it into decrypted_keys
+;         Repeat until the expected number of decrypted bytes is produced.
+;  2) On success: return with carry clear. On persistent failure: return
+;     with carry set.
+;
+; Key variables / buffers
+;  - attempt_counter ($C5)          : tries left for the read attempt
+;  - encrypted_keys ($0150)         : where raw bytes from track 36 are stored
+;  - encrypted_keys_checksum_1/2   : last two bytes of the encrypted block
+;  - data_checksum ($B7)            : running XOR checksum
+;  - track_36_sync_count ($BE)     : measured sync-run count for track 36
+;  - decrypted_keys ($0200)         : destination for the decrypted keys
+;  - bit_stream_1/2/3               : small bitstream working area used by rotation
+;
+; ==================================================================
+encrypted_keys = $0150
+encrypted_keys_checksum_1 = $0185
+encrypted_keys_checksum_2 = $0184
+track_36_sync_count = $be
+decryption_iteration_counter = $c6
+rotation_loop_counter = $bd
+encrypted_key_offset = $bf
+
+validate_track_36:
+    LDA #$0A                ; attempt_counter = 10 (max attempts for the overall read/decrypt)
+    STA attempt_counter
+
+next_attempt:
+    JSR read_another_byte   ; refresh disk timers / ensure drive is ready for a read
+
+	;----------------------------------------
+	; Read encrypted keys from track 36 (a total of #36 bytes)
+	;----------------------------------------
+    LDY #$00                ; Y = 0, index into encrypted_keys
+wait_for_byte_sync:
+    BVC wait_for_byte_sync  ; loop while overflow (byte-ready) flag is clear
+    CLV                     ; clear overflow so we can detect the next byte event
+    LDA data_port_a_disk_head  ; read the byte from the disk head via port A
+    STA encrypted_keys,Y    ; store into encrypted_keys[Y]
+    INY                     ; Y++
+    CPY #$36                ; have we read 0x36 bytes yet?
+    BNE wait_for_byte_sync  ; if not, continue waiting and reading
+
+    JSR wait_for_block_sync_with_byte_count  ; measure a sync-run (returns count in Y)
+    STY track_36_sync_count ; store measured sync count for later validation
+	
+
+	; ----------------------------------------
+	; Compute XOR checksum over first 0x34 bytes
+	; ----------------------------------------
+    LDA #$6B                ; initial XOR seed for running checksum
+    LDY #$00                ; Y = 0
+
+xor_next:
+    EOR encrypted_keys,Y    ; running checksum ^= encrypted_keys[Y]
+    INY
+    CPY #$34                ; loop for 0x34 bytes (52 bytes)
+    BNE xor_next
+
+    STA data_checksum       ; store running checksum result
+	
+	; ----------------------------------------
+	; Validate stored checksum using last two trailer bytes
+	; ----------------------------------------
+    LDX encrypted_keys_checksum_2  ; X = penultimate trailer byte (for packing)
+    LDA encrypted_keys_checksum_1  ; A = last trailer byte (for packing)
+    JSR dibit_pack_4310     ; pack two trailer bytes into a single checksum byte
+    EOR data_checksum        ; XOR packed value with running checksum -> expect 0
+    BNE attempt_failed      ; mismatch => attempt failed (try again) 
+
+	; ----------------------------------------
+	; Setup decryption counters & offsets
+	; ----------------------------------------
+    STA encrypted_key_offset   ; encrypted_key_offset = 0  (use A from prior op; safe - was result of pack)
+    STA decryption_iteration_counter  ; decryption_iteration_counter = 0
+
+
+; ----------------------------------------
+; Prepare initial bitstream window (read 3 bytes into bit_stream area)
+; ----------------------------------------
+setup_bitstream:
+    LDX #$02                ; X = 2 (stores into bit_stream_1,X using X as offset)
+    STX rotation_loop_counter ; rotation_loop_counter = 2 (inner loop repeat counter)
+    LDY encrypted_key_offset ; Y = key offset (initially 0)
+
+load_next_bitstream:
+    LDA encrypted_keys + 1,Y  ; load encrypted_keys[offset + 1]
+    STA bit_stream_1,X       ; store into bit_stream_1 + X (populating bit_stream area)
+    INY
+    DEX                     ; decrement X (we started at 2, will store 3 bytes: X=2,1,0)
+    BPL load_next_bitstream ; loop while X >= 0
+
+    STY encrypted_key_offset ; save the updated key offset (could be used next iteration)
+	
+
+	; ----------------------------------------
+	; Decrypt one output key byte by rotating the 24-bit bitstream
+	; ----------------------------------------
+    LDY decryption_iteration_counter ; Y = index into decrypted_keys (destination index)
+setup_rotation:
+    LDX #$04                ; do 4 rounds of the inner rotation routine (produces one output byte)
+
+next_rotation:
+    JSR rotate_bitstream_left ; rotate the 24-bit bitstream left once (propagates bit through carry)
+    JSR rotate_bitstream_left ; rotate again
+    ROL A                   ; pull carry into A (accumulate a bit into A)
+    JSR rotate_bitstream_left ; rotate a third time
+    ROL A                   ; pull another bit into A
+    DEX
+    BNE next_rotation       ; repeat 4 times to accumulate full output byte
+
+    STA decrypted_keys,Y    ; store produced decrypted byte at decrypted_keys[Y]
+    INY                     ; increment destination index
+    DEC rotation_loop_counter ; decrement inner rotation-window counter
+    BNE setup_rotation      ; if still rotations pending for this window, repeat			
+	
+	; ----------------------------------------
+	; Advance outer iteration to process next window / finish
+	; ----------------------------------------
+    CPY #$22                ; have we produced 0x22 decrypted bytes (0x22 = 34)?
+    STY decryption_iteration_counter ; save iteration count
+    BNE setup_bitstream     ; if not done, load next bitstream window and continue
+
+    CLC                     ; success: clear carry
+    RTS                     ; return (carry clear => success)
+
+attempt_failed:
+    DEC attempt_counter     ; one attempt used up
+    BNE next_attempt        ; if still attempts left, retry the whole process
+    SEC                     ; no attempts left -> signal failure (set carry)
+    RTS
+	
+;=========================================
+; rotate_bitstream_left - primitive
+; ----------------------------------------
+; Rotate the 24-bit bit_stream left by one bit. The three bytes are
+; treated as a concatenated 24-bit value; these ROLs propagate the MSB
+; of one byte into the next via the carry flag.
+rotate_bitstream_left:
+    ROL bit_stream_1        ; rotate top byte (feeds carry into second via next ROL)
+    ROL bit_stream_2        ; rotate middle byte
+    ROL bit_stream_3        ; rotate low byte (carry from low byte goes to CPU carry)
+    RTS
+;=======================================
+
+; -----------------------------------------------------------------
+; jump_to_code_and_reset
+; -----------------------------------------------------------------
+; Purpose:
+;  - Wipe several RAM regions (zero out buffers and zero page) to
+;    remove previously loaded code/data, set a job entry to execute
+;    the RAM diagnostic (re-initialization) routine, and then jump to
+;    the RAM diagnostic entry point which resets/re-initializes the drive.
+;
+; Behavior summary:
+;  - Clears 256 bytes at each of these base addresses:
+;       $0200, $0420, $0520, $0620
+;  - Clears the 256-byte zero page area ($00-$FF) via STA $00,X
+;  - Clears 256 bytes starting at $06D8 (range $06D8..$07D7)
+;  - After clearing, stores $D0 into $01 (sets up job #1 / command code)
+;  - Jumps to the RAM diagnostic entry point (transfer control out).
+;
+; - This is destructive and must be the final action before jumping to ROM.
+; -----------------------------------------------------------------
+jump_to_code_and_reset:
+    LDA #$00
+    TAX
+clear_loop:
+    STA $0200,X
+    STA $0420,X
+    STA $0520,X
+    STA $0620,X
+    STA $06D8,X
+    STA $00,X
+    INX
+    BNE clear_loop
+	;Set up job #1, code #D0 (JUMP to machine code in buffer)
+    LDA #$D0
+    STA $01
+	;Jump to a different entry point of the RAM diagnostic routine (which will re-initialize the drive)
+    JMP ram_diagnostic_entry_point
+

@@ -1,0 +1,179 @@
+;===================================================================
+; Side 1
+;
+; Sectors read
+;
+; 	Each full sector represents 384 bytes of real data
+;	Sector 18/00 always loaded first for each of these
+;
+; Intro screen:
+; 	Tracks 19-23, all sectors (00-10)
+; 	Then track 24, sectors 0-7
+; 	Total size = 384 * 41 + 323 = 16067 (0x3EC3)
+;
+; Main game:
+; 	Track 24, sectors 08-10
+; 	Tracks 25-34, all sectors (00-10)
+; 	Track 35, sectors 00 and 01
+;
+; Scene 1 (first outlaw "stinkin' town"):
+;	Track 02, sectors 01-11
+; 	Track 03, sectors 00-11
+;	Track 04, sectors 00-10
+;
+; Scene 2 (Rose):
+;	07/09-11
+;	08-09/00-11
+;	10/00-06
+;
+; Scene 3 (mexicali kid):
+;	04/11
+;	05-06/00-11
+;	07/00-08
+;
+; Scene 4 (doctor):
+;	13/05-11
+;	14-15/00-11
+;	16/00-02
+; 
+; Dalton gang:
+;	10/07-11
+;	11-12/00-11
+;	13/00-04
+;
+;			Sector	|	0	1	2	3	4	5	6	7	8	9	10	11
+;========================================================================
+;			Track	|
+;			1		|
+;			2		|		S1	S1	S1	S1	S1	S1	S1	S1	S1	S1	S1	
+;			3		|	S1	S1	S1	S1	S1	S1	S1	S1	S1	S1	S1	S1	
+;			4		|	S1	S1	S1	S1	S1	S1	S1	S1	S1	S1	S1	S3	
+;			5		|	S3	S3	S3	S3	S3	S3	S3	S3	S3	S3	S3	S3
+;			6		|	S3	S3	S3	S3	S3	S3	S3	S3	S3	S3	S3	S3
+;			7		|	S3	S3	S3	S3	S3	S3	S3	S3	S3	S2	S2	S2
+;			8		|	S2	S2	S2	S2	S2	S2	S2	S2	S2	S2	S2	S2	
+;			9		|	S2	S2	S2	S2	S2	S2	S2	S2	S2	S2	S2	S2	
+;			10		|	S2	S2	S2	S2	S2	S2	S2	DG	DG	DG	DG	DG
+;			11		|	DG	DG	DG	DG	DG	DG	DG	DG	DG	DG	DG	DG
+;			12		|	DG	DG	DG	DG	DG	DG	DG	DG	DG	DG	DG	DG
+;			13		|	DG	DG	DG	DG	DG	S4	S4	S4	S4	S4	S4	S4
+;			14		|	S4	S4	S4	S4	S4	S4	S4	S4	S4	S4	S4	S4
+;			15		|	S4	S4	S4	S4	S4	S4	S4	S4	S4	S4	S4	S4
+;			16		|	S4	S4	S4
+;			17		|	I*	M*	L*	L*	L*	L*	L*	L*
+;			18		|	BAM	DIR
+;			19		|	I	I	I	I	I	I	I	I	I	I	I
+;			20		|	I	I	I	I	I	I	I	I	I	I	I	
+;			21		|	I	I	I	I	I	I	I	I	I	I	I
+;			22		|	I	I	I	I	I	I	I	I	I	I	I
+;			23		|	I	I	I	I	I	I	I	I	I	I	I
+;			24		|	I	I	I	I	I	I	I	I	M	M	M
+;			25		|	M	M	M	M	M	M	M	M	M	M	M
+;			26		|	M	M	M	M	M	M	M	M	M	M	M
+;			27		|	M	M	M	M	M	M	M	M	M	M	M
+;			28		|	M	M	M	M	M	M	M	M	M	M	M
+;			29		|	M	M	M	M	M	M	M	M	M	M	M
+;			30		|	M	M	M	M	M	M	M	M	M	M	M
+;			31		|	M	M	M	M	M	M	M	M	M	M	M
+;			32		|	M	M	M	M	M	M	M	M	M	M	M
+;			33		|	M	M	M	M	M	M	M	M	M	M	M
+;			34		|	M	M	M	M	M	M	M	M	M	M	M
+;			35		|	M	M
+;
+;	Legend:	I	Intro of game
+;			M	Main game code
+;			BAM	Block Availability Map
+;			DIR	Directory
+;			L*	First sector (with Rapidlok loader) of one of the files
+;			DG	Dalton Gang
+;			Sx	Scene X
+;===================================================================
+; Side 2
+;
+; Scene 5 (guy with shotgun):
+;	28/05-10
+;	29-30/00-10
+;	31/00-05
+;
+; Scene 6 (Willie):
+;	22/03-10
+;	23-24/00-10
+;	25/00-03
+;
+; Dalton Gang:
+;	19/02-10
+;	20-21/00-10
+;	22/00-02
+;
+; Scene 7 (Miss April):
+;	25/04-10
+;	26-27/00-10
+;	28/00-04
+;
+; Scene 8 (gambler):
+;	31/06-10
+;	32-33/00-10
+;	34/00-06
+;
+; Scene 9 (deputy):
+;	34/07-10
+;	35/00-10
+;	01/00-11
+;	02/00-06
+;
+; Scene 10 (Belle):
+;	02/07-11
+;	03-04/00-11
+;	05/00-04
+;
+; Scene 11 (fast shooter):
+;	05/05-11
+;	06-07/00-11
+;	08/00-02
+;
+;			Sector	|	0	1	2	3	4	5	6	7	8	9	10	11
+;========================================================================
+;			Track	|
+;			1		|	S9	S9	S9	S9	S9	S9	S9	S9	S9	S9	S9	S9
+;			2		|	S9	S9	S9	S9	S9	S9	S9	S10	S10	S10	S10	S10
+;			3		|	S10	S10	S10	S10	S10	S10	S10	S10	S10	S10	S10	S10
+;			4		|	S10	S10	S10	S10	S10	S10	S10	S10	S10	S10	S10	S10
+;			5		|	S10	S10	S10	S10	S10 S11	S11	S11	S11	S11	S11	S11
+;			6		|	S11	S11	S11	S11	S11	S11	S11	S11	S11	S11	S11	S11
+;			7		|	S11	S11	S11	S11	S11	S11	S11	S11	S11	S11	S11	S11
+;			8		|	S11	S11	S11
+;			9		|
+;			10		|
+;			11		|
+;			12		|
+;			13		|
+;			14		|
+;			15		|
+;			16		|
+;			17		|	L*	L*	L*	L*	L*	L*	L*	L*	L*	L*
+;			18		|	BAM	DIR			DIR
+;			19		|	-	-	-	DG	DG	DG	DG	DG	DG	DG	DG
+;			20		|	DG	DG	DG	DG	DG	DG	DG	DG	DG	DG	DG
+;			21		|	DG	DG	DG	DG	DG	DG	DG	DG	DG	DG	DG
+;			22		|	DG	DG	DG	S6	S6	S6	S6	S6	S6	S6	S6
+;			23		|	S6	S6	S6	S6	S6	S6	S6	S6	S6	S6	S6
+;			24		|	S6	S6	S6	S6	S6	S6	S6	S6	S6	S6	S6
+;			25		|	S6	S6	S6	S6	S7	S7	S7	S7	S7	S7	S7
+;			26		|	S7	S7	S7	S7	S7	S7	S7	S7	S7	S7	S7
+;			27		|	S7	S7	S7	S7	S7	S7	S7	S7	S7	S7	S7
+;			28		|	S7	S7	S7	S7	S7	S5	S5	S5	S5	S5	S5
+;			29		|	S5	S5	S5	S5	S5	S5	S5	S5	S5	S5	S5
+;			30		|	S5	S5	S5	S5	S5	S5	S5	S5	S5	S5	S5
+;			31		|	S5	S5	S5	S5	S5	S5	S8	S8	S8	S8	S8
+;			32		|	S8	S8	S8	S8	S8	S8	S8	S8	S8	S8	S8
+;			33		|	S8	S8	S8	S8	S8	S8	S8	S8	S8	S8	S8
+;			34		|	S8	S8	S8	S8	S8	S8	S8	S9	S9	S9	S9
+;			35		|	S9	S9	S9	S9	S9	S9	S9	S9	S9	S9	S9
+;
+;	Legend:	
+;			BAM	Block Availability Map
+;			DIR	Directory
+;			L*	First sector (with Rapidlok loader) of one of the files
+;			DG	Dalton Gang
+;			Sx	Scene X
+;===================================================================

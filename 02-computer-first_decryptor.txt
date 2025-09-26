@@ -1,0 +1,80 @@
+; ============================================================
+; Rapidlok — Stage 2 - first decryptor
+; Purpose:
+;  - Run at $02ED after being loaded by Stage 1
+;  - Set up pointers and decrypt an encrypted block using a XOR table
+;  - Jump to the decrypted routine
+; ============================================================
+
+; Entry assumptions:
+;  - Y = #$00
+;  - end_of_program (zero page pointer) initially points to $032A
+;  - This code runs from $02ED..$0328
+; ----------------------------------------------------------------
+; Zero-page names (aliases for the loader's zero-page slots)
+end_of_program = $AE    ; >end_of_program / <end_of_program stored at $AE/$AF
+encrypted_data = $C3    ; pointer (two bytes) to encrypted data
+xor_data = $08          ; pointer (two bytes) to XOR table
+
+; -------------------------------------------
+; setup_pointers
+; - Clear interrupts, pop two return bytes left by JSR,
+; - initialize zero-page pointers for decryption.
+; -------------------------------------------
+setup_pointers:
+    SEI                     ; disable interrupts
+
+    ; Remove the JSR return address from the stack (we arrived via JSR)
+    PLA
+    PLA
+
+    ; Initialize low byte of xor_data to 0
+    STY <xor_data            
+
+    ; decrement high byte of end_of_program (end_of_program changes from $032A to $022A)
+    DEC >end_of_program
+
+    ; Load #02 into .A
+    LDA >end_of_program		; Load #02 into .A
+    STA >encrypted_data		; >encrypted_data = #02
+    STA >xor_data			; >xor_data = #02 -> so xor_data = $0200
+
+    ; Apply XOR to low byte of end_of_program to compute final end address
+    LDA <end_of_program		; Load #2A into .A
+    STA <encrypted_data      ; <encrypted_data = #2A -> so encrypted_data = $022A
+
+    EOR #$9C				; #2A XOR #9C = #B6
+    STA <end_of_program      ; end_of_program = $02B6
+
+    ; Now:
+    ;  - end_of_program = adjusted low/high bytes (zero-page $AE/$AF)
+    ;  - encrypted_data = pointer at $C3/$C4
+    ;  - xor_data = pointer at $08/$09
+    ; These pointers will be used for indexed (indirect,Y) accesses.
+
+; -------------------------------------------
+; decrypt
+; - Use Y as an index so (encrypted_data),Y and (xor_data),Y point
+;   at the appropriate in-memory ranges. The code XORs each byte in
+;   the encrypted block with a corresponding byte from the XOR table.
+;
+; At this point:
+;		end_of_program = $02B6
+;		encrypted_data = $022A
+;		xor_data = $0200
+; -------------------------------------------
+decrypt:
+    LDY #$ED                ; initial Y index so (encrypted_data),Y -> $0317
+                            ; and (xor_data),Y -> $02ED (XOR table in earlier code)
+
+decrypt_byte_loop:
+    LDA (encrypted_data),Y  ; load encrypted byte
+    EOR (xor_data),Y        ; decrypt with corresponding xor byte
+    STA (encrypted_data),Y  ; write decrypted byte back in place
+    INY
+    BNE decrypt_byte_loop   ; loop until Y wraps to 0 (end condition via zero)
+
+    ; After decryption, jump into decrypted routine
+    LDY #$58                ; set Y as required by decrypted routine
+    JSR decrypted_routine
+    ; (the remaining bytes after this JSR are data / encrypted content)

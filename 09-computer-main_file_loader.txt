@@ -1,0 +1,217 @@
+; ==============================================================================
+; Rapidlok — Stage 9 (computer-side receiver / main-file loader)
+;
+; Purpose:
+;   - Host-side receiver for the final stage of the loader: receives the
+;     main payload from the drive, writes it into RAM, performs cleanup,
+;     and transfers execution into the freshly loaded image.
+;
+; High-level flow:
+;   1. Read write-pointer parameters (index, high byte) using the loader protocol.
+;   2. Stream the main file into RAM at (write_ptr),Y using an indirect-STA loop.
+;   3. Clear previously used loader code/data pages to free/obfuscate memory.
+;   4. Collect/push the execution start address on the stack (completes a 16-bit
+;      return address composed across stages).
+;   5. Restore Kernal vectors and re-enable interrupts, then jump to BASIC/ROM
+;      helper that will return into the pushed execution address.
+;
+; Preconditions:
+;   - Caller/earlier stages must leave .X and other protocol state as required:
+;       * .X is expected to be #$03 on entry to main_loader_entry_point
+;       * One byte of the execution-start address must already be on the stack
+;         (the routine pushes the second byte with PHA).
+;   - read_bytes_from_serial_bus and disk_io_loop_2 must implement the agreed
+;     transport protocol (they interpret opcode values passed in A).
+;
+; ==============================================================================
+
+;Execution resumes at address $02EF (main_loader_entry_point)
+
+; --------------------------------------------------------------------------
+; clear_0200_0258_area
+; --------------------------------------------------------------------------
+; Purpose:
+;   - Zero a block of memory using (write_ptr),Y indirect-indexed stores,
+;     sweeping by incrementing the high byte of write_ptr to cover multiple
+;     256-byte pages. Optionally continues sweeping until hardware conditions
+;     are met.
+;
+; Behavior:
+;   - Sets Y = $58 and disables IRQs (SEI) for atomic clearing.
+;   - Writes A (expected to be zero on the normal path) into STATUS and then
+;     clears the target range via STA (write_ptr),Y loop.
+;   - If A is non-zero, the routine conditionally increments the high byte of
+;     write_ptr (move_clear_pointer) and continues clearing additional pages
+;     while MSGFLG indicates control messages are displayed.
+;   - Polls CIA2 port A (CLKIN) and MSGFLG to determine when to stop clearing,
+;     then stores the final write pointer bytes to $2D/$2E for later use.
+;
+; Inputs / preconditions:
+;   - write_ptr (zero-page pointer) must be initialized prior to call.
+;   - A is used as a control/result input: normally zero, but when non-zero
+;     causes the routine to continue sweeping pages. The caller may use A to
+;     return a small status value (low byte of execution start address).
+;
+; Outputs / side effects:
+;   - Zeroes memory (destructive).
+;   - Leaves A containing execution_start_address_lo (loaded before RTS).
+;   - IRQs remain disabled on exit (caller must CLI when appropriate).
+;   - Writes low/high bytes of the last write pointer into $2D/$2E when the
+;     routine reaches its terminal condition.
+;
+; --------------------------------------------------------------------------
+cia2_port_a_data_register = $DD00
+write_ptr = $08
+STATUS = $90	;Kernal I/O Status word
+MSGFLG = $9D	;Kernal Message Control
+write_ptr = $AE
+execution_start_address_lo = $0326
+
+
+clear_0200_0258_area:
+    LDY #$58
+    SEI
+	; .A = #00
+    LSR A
+    LSR A
+    STA STATUS
+	;Common trick to nullify the next instruction - prefix a 2-byte instruction with a BIT instruction
+	; to convert it into a 16-bit address
+    BIT $09E6
+move_clear_pointer:
+    INC >write_ptr
+	;----------------------------------------
+clear_loop:
+    STA (write_ptr),Y
+    DEY
+    BNE clear_loop
+	; Set .X = .A (#00)
+    TAX
+	; Is .A zero? If so, skip the next section
+    BEQ wait_for_clkin_set
+	;Are control messages displayed? 
+	;If so, something wrent wrong, keep moving the hi part of the clear pointer
+	; and keep obliterating memory
+    BIT MSGFLG
+    BMI move_clear_pointer
+	;----------------------------------------
+wait_for_clkin_set:
+	;Wait until CLKIN is set
+    BIT cia2_port_a_data_register
+    BVC wait_for_clkin_set
+	;Are control messages displayed? If not, exit
+    BIT MSGFLG
+    BPL exit
+	;Copy the address where we wrote the last byte read from the serial bus to $2D
+    LDY <write_ptr
+    STY $2D
+    LDY >write_ptr
+    STY $2E
+	;----------------------------------------
+exit:
+	;Load the execution start address (low part) into .A and return
+    LDA execution_start_address_lo		;Value = #29
+    RTS
+;=====================================
+; Unused code?
+;=====================================
+    JSR reset_basic_execute_pointer	;A BASIC ROM routine
+    LDX <write_ptr
+    LDY >write_ptr
+    LDA #$00
+    STA MSGFLG
+    JMP setup_next_statement_for_execution	;A BASIC ROM routine
+;=====================================================
+; Entry point from the previous stage
+;=====================================================
+RTS_OPCODE = #60
+STA_INDIRECT_INDEXED_OPCODE = #91
+
+; --------------------------------------------------------------------------
+; main_loader_entry_point
+; --------------------------------------------------------------------------
+; Purpose:
+;   - Top-level entry point for the computer-side receiver of the main file.
+;   - Coordinates parameter reception (write pointer/index), streams the
+;     payload to RAM at (write_ptr),Y, invokes clearing, then finalizes the
+;     transfer by restoring vectors and jumping into the loaded image.
+;
+; Expected entry state:
+;   - .X == #$03 (protocol precondition).
+;   - The high byte of the eventual execution-start address is already pushed
+;     on the stack by a previous protocol stage (this routine pushes the low
+;     byte with PHA to complete the 16-bit return address).
+;
+; Sequence:
+;   1. Read one protocol byte (index) via read_bytes_from_serial_bus (A = RTS_OPCODE).
+;   2. Increment X and check for wrap — if wrap occurs, bail to clear_area.
+;   3. Save the index into Y and read the write_ptr high byte via disk_io_loop_2.
+;   4. Stream the incoming payload by calling read_bytes_from_serial_bus with
+;      STA_INDIRECT_INDEXED_OPCODE; this routine stores bytes directly at
+;      (write_ptr),Y as they arrive.
+;   5. Call clear_0200_0258_area — on return A contains execution_start_address_lo.
+;   6. Push the returned low byte (PHA) to complete the 16-bit execution address
+;      previously prepared on the stack.
+;   7. Call RESTOR, re-enable IRQs (CLI), and jump to copy_basic_vectors_to_ram.
+;      When that routine returns, execution continues at the pushed address.
+;
+; Important notes:
+;   - The code relies on precise cooperation with earlier stages. If the high
+;     byte of the target execution address is not present on the stack, the
+;     final transfer will land at an incorrect address.
+;   - read_bytes_from_serial_bus and disk_io_loop_2 must implement the agreed
+;     protocol: the opcode parameter in A controls whether a single byte is
+;     returned or a stream is stored to (write_ptr),Y.
+; --------------------------------------------------------------------------
+main_loader_entry_point:
+	;-----------------------------------------------------------------
+	; Load destination address
+	;
+	; As in the previous stage, read from the serial bus the addresses needed to setup the write pointer (the base address hi and the index)
+	;-----------------------------------------------------------------
+	;On entry, .X = #03
+	;Read one byte from the serial bus (write buffer index)
+    LDA RTS_OPCODE
+    JSR read_bytes_from_serial_bus	;Byte read is #80
+	;Increment .X to #04
+    INX
+	;If .X == #00, skip to clear area (this will leave things unfinished and fail the load)
+    BEQ clear_area
+	;Store read byte into .Y
+    TAY
+	;Read another byte from the serial bus into .A (write buffer hi byte)
+	;The byte read is #28
+	;write_ptr = $2800
+	;write index .Y = #80
+    JSR disk_io_loop_2
+    STA write_ptr_hi
+	;-----------------------------------------------------------------
+	; Load the main file
+	;-----------------------------------------------------------------
+	;Read multiple bytes from the serial bus, store them in write_ptr
+	;This will write to the area $2880-86C1
+    LDA STA_INDIRECT_INDEXED_OPCODE
+    JSR read_bytes_from_serial_bus
+	;-----------------------------------------------------------------
+	; Clear part of the previous code executed and set up execution start address
+	;-----------------------------------------------------------------
+clear_area:
+    JSR clear_0200_0258_area
+	;On return, we have the "execution start address" present in .A
+	;Push it into the stack
+	;We now have a full 16-bit address pushed in the stack ($8029)
+    PHA
+	;-----------------------------------------------------------------
+	; Wrap up before real execution
+	;-----------------------------------------------------------------
+    JSR RESTOR		;Kernal routine called "RESTOR" to restore the default IRQ vectors
+    LDA STATUS		;STATUS = #00
+    CMP #$40
+    CLI
+    LDA #$00
+    JMP copy_basic_vectors_to_ram		;Kernal routine to set up the BASIC vectors
+	;On return of that last routine, execution will resume at the "execution start address" we previously pushed
+	; That is: $8029 + 1 = $802A
+
+
+

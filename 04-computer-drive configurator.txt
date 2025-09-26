@@ -1,0 +1,315 @@
+; ============================================================
+; Rapidlok - Stage 4 - Disk configurator / serial IO modal routine
+; Purpose:
+;  - Provide a modal serial-read routine that can operate in two modes:
+;      * Single-byte mode (caller gets byte in A; routine returns)
+;      * Multi-byte write mode (store incoming bytes into a write buffer)
+;  - Implement a fast-serial read (2 bits per transfer) using CIA port bits
+;  - Configure the drive by sending a sequence of commands via KERNAL routines
+; ============================================================
+
+; Constants / labels
+cia2_port_a_data_register = $DD00
+raster_line_register     = $D012
+write_ptr                = $AE      ; zero page pointer ($AE/$AF)
+bits_1_and_0             = $0246    ; temp storage for VIC-II low bits
+current_device_number    = $BA
+RTS_OPCODE               = #$60		; opcode for the RTS instruction
+STA_IND_IDX_OPCODE       = #$91		; opcode for the STA instruction, indirect indexed mode
+execution_start_address_hi = $0327
+
+;Execution will resume at configure_disk_drive
+
+; ----------------------------------------------------------------
+; Modal serial-read routine:
+; - Caller passes an instruction opcode (in A) which is stored in-line.
+;   If the inlined opcode is RTS, the routine returns after reading 1 byte.
+;   If the inlined opcode is STA (indirect,Y), the routine reads many bytes
+;   and stores them into (write_ptr),Y, incrementing the write pointer as needed.
+; - The routine uses a timing loop with the raster register and the CIA port.
+;
+;-----------------------------------------------------------------
+; Arguments: .A			instruction_opcode		the opcode for the instruction (which determines the mode of operation)
+;												#60 for RTS
+;												#91 for STA (indirect indexed addressing mode)
+;												Note: technically any instruction opcode can be passed, but only these two are expected.
+;
+;-----------------------------------------------------------------
+; Arguments for single byte read:				None
+; Return value for single byte read: 			.A		value of the byte read
+;
+;-----------------------------------------------------------------
+; Arguments for multi byte read:				>write_ptr	destination buffer base address (hi part)
+;															note: the low part is set to #00 inside this routine
+;												.Y			destination buffer index
+; Return value for single byte read: 			None
+
+;-----------------------------------------------------------------
+; Technical note:
+;				Bytes are read using a typical 'fast-loader' technique,
+; which transmits 2 bits per communication instead of the default of 1.
+; This uses the Clock and Data signals simultaneously and relies on synchronized timing between the drive and the computer to work.
+; 
+; A single byte is read by doing 4 successive read operations, each of them yielding 2 bits.
+; Bits are read LSB first and get shifted right (twice) on each successive read operation.
+; 
+; The following combinations of CLKIN and DATIN correspond to these bit pairs:
+;
+; Bitmask value (hex)		Data bits
+;		00						00
+;		40						01
+;		80						10
+;		C0						11
+;----------------------------------------------------------------
+read_bytes_from_serial_bus:
+    LDX #$FF
+    STA instruction_opcode        ; store caller's opcode (inlined later)
+    LDA #$00
+    STA <write_ptr                ; write_ptr.lo = 0
+
+wait_for_data_in:
+    LDA cia2_port_a_data_register
+    BMI wait_for_data_in          ; wait until DATIN bit (bit7) becomes set
+
+disk_io_loop_2:
+    LDA cia2_port_a_data_register
+    BMI exit                      ; if DATIN cleared, exit
+
+    CMP #$40                      ; #$40 = CLOCK-IN bit mask
+    BCC disk_io_loop_2            ; wait until clock-in is asserted
+
+    ORA #$10                      ; set CLOCK-OUT bit
+    STA cia2_port_a_data_register
+
+    AND #$03                      ; preserve low VIC-II bits
+    TAX                           ; save to X for later restoration
+
+wait_for_raster_line:
+    LDA raster_line_register
+    SBC #$32
+    BCC read_byte_from_bus
+    AND #$07
+    BEQ wait_for_raster_line
+
+read_byte_from_bus:
+    STX cia2_port_a_data_register ; write back low VIC-II bits (clear serial bits)
+    STX bits_1_and_0              ; save low VIC-II bits for later
+
+    LDA (write_ptr),X             ; dummy read for timing (value discarded)
+    TXA
+
+    ; Read 4 x 2-bit pairs (LSB-first), shifting right twice each time
+    ORA cia2_port_a_data_register
+    LSR A
+    LSR A
+    ORA cia2_port_a_data_register
+    LSR A
+    LSR A
+    ORA cia2_port_a_data_register
+    LSR A
+    LSR A
+    ; XOR with fresh port value to restore data bits and then
+    ; XOR with bits_1_and_0 to restore original VIC-II bits in low pair
+	; (see detailed note below)
+    EOR cia2_port_a_data_register
+    EOR bits_1_and_0
+
+    ; ------------------------------------------------------------
+    ; Dynamic opcode executed in-line:
+    ; The code region here contains an inlined opcode byte that
+    ; determines the mode of operation.
+    ;
+    ; - If the inlined opcode is RTS (#$60), CPU will execute RTS:
+    ;     → single-byte mode: return to caller with read byte in A
+    ; - If the inlined opcode is STA ($91) then the following bytes
+    ;   implement: STA (write_ptr),Y; INY; BNE disk_io_loop_2; INC >write_ptr; JMP disk_io_loop_2
+    ;
+    ; This technique obfuscates control flow and makes the routine modal.
+    ; ------------------------------------------------------------
+instruction_opcode_inlined:   ; inline opcode chosen previously by STA instruction_opcode
+    ; (expected bytes here: RTS or STA ... operands follow)
+    ; If RTS is inlined, it returns now.
+
+    ; Multi-byte mode (the STA sequence, executed if STA was inlined)
+    STA (write_ptr),Y
+    INY
+    BNE disk_io_loop_2
+    INC >write_ptr
+    JMP disk_io_loop_2
+
+exit:
+    STY <write_ptr
+    AND #$40
+    RTS
+
+; ----------------------------------------------------------------
+; Disk configuration sequence
+; - Send a sequence of KERNAL-driven commands to the drive to set
+;   special parameters and to load & execute a sector in the drive.
+; - Uses KERNAL helpers: LISTEN, SECOND, CIOUT, UNLSN, etc.
+;
+; It will instruct the drive to do main things:
+;
+;	-write 2 specific values in the drive's memory (used later on as arguments for the loading routines)
+;	-load a sector into the drive's memory and execute it, kickstarting the custom loader program
+;
+; For extra info, check https://www.pagetable.com/?p=1031
+;
+; All of the command sequences start with a LISTEN and end with an UNLISTEN.
+; The secondary address and the command string arguments determine the real behavior.
+;
+; 1. Secondary address 0xEF - CLOSE channel 15 (used for DOS commands)
+;
+; 2. Secondary address 0xFF - OPEN channel 15
+;	-Send the memory write (M-W) command to transmit the encrypted track and sector numbers to the drive's memory
+;
+; 3. Secondary address 0xF2 - OPEN channel 2
+;	-Send the "#0" command - not sure about the effect of this
+;
+; 4. Secondary address 0xFF - OPEN channel 15
+;	-Send the block execute (B-E) command to load a sector into the drive's memory and execute it
+; ----------------------------------------------------------------
+configure_disk_drive:
+    LDY #$03                  ; command index
+
+send_next_command:
+	;In order to send a command to the disk drive, we first have to indicate that we want to talk to it
+	;This is done by first telling the device "to listen", and then by sending what's called a "secondary address".
+    LDA current_device_number
+    JSR LISTEN                ; KERNAL: put drive into LISTEN (it does the handshaking with the drive and instructs it to listen)
+
+    LDA secondary_addresses,Y
+    JSR SECOND                ; KERNAL: send secondary address
+
+    LDX command_offsets,Y     ; offset into command_bytes
+;------------------------------------
+;Output a command string to the serial bus
+;------------------------------------
+send_command_byte:
+    LDA command_bytes,X
+    CMP #$FF
+    BEQ unlisten              ; $FF used as string terminator / no-op
+    JSR CIOUT                 ; KERNAL: output byte to serial bus
+    INX
+    BNE send_command_byte
+;------------------------------------
+unlisten:
+    JSR UNLSN                 ; KERNAL: stop drive listening
+    DEY
+    BPL send_next_command     ; loop over commands
+;------------------------------------
+; After all the commands are sent, the disk drive will go through multiple stages of the loader execution.
+; Eventually, it will start sending the file content over the serial bus.
+; Set up the write address and do a multi-byte serial read.
+;------------------------------------
+    LDA execution_start_address_hi	;Value is #80
+	;Push "execution start address" into stack (hi part = #80)
+	;This will become a full 16-bit address at a later stage, present in the stack
+	;When the last routine of this loader returns, execution will resume at the start address
+    PHA                       
+
+	;Read the write index from the serial bus (value read is #B6)
+    LDA RTS_OPCODE
+    SEI
+    CLC
+    JSR read_bytes_from_serial_bus   ; first read: one byte into A
+    TAY                       ; store read byte into Y
+	;Read the next byte from the serial bus (value read is #02)
+    JSR disk_io_loop_2        ; read next byte into A	
+	;Store it in write_ptr_hi
+    STA write_ptr_hi          
+	;write_ptr is now set to $0200
+	
+	; (write_ptr),Y -> $0200 + $B6 = $02B6
+	; The write operation will start at that address, which is exactly the beginning of this routine
+	; This code will overwrite itself
+	; The memory area that will be written into is $02B6-0314
+
+    LDA STA_IND_IDX_OPCODE
+    JSR read_bytes_from_serial_bus   ; multi-byte read: write into write_ptr region
+
+    ; After this routine returns, execution will resume at main loader entry ($02EF)
+
+; ----------------------------------------------------------------
+; Data blocks (commands, offsets, addresses)
+;
+; Command bytes are mixed with other variables, perhaps to obfuscate things a bit.
+; ----------------------------------------------------------------
+commands:
+    .asc "#0", $FF			;Not sure about the net effect of this command string
+    ; Block execute / arguments
+    .asc "B-E2 0 18 12" 	;Block execute, channel 2, drive 0, track 18, sector 12  
+
+secondary_addresses:
+    .byte $FF, $F2, $FF, $EF
+
+command_offsets:
+    .byte $03, ;Offset to the "B-E..." command
+	$00, 		;Offset to the "#0" command
+	$17, 		;Offset to the memory_write_command
+	$02			;Offset to the FF byte in command_bytes (which is equivalent to an empty string and doesn't send any command)
+
+memory_write_command:	; Memory write, - - Payload: 0x15 0xEA (encrypted track and sector number)
+    .asc "M-W"
+    .byte $D6, $00, 	;write address: $00D6 
+	.byte $02, 			;total bytes to write: 2 
+	.byte $15, $EA,		;payload: 0x15 0xEA (encrypted track and sector number) 
+	.byte $FF
+    .byte $20, $16
+
+;------------------------------------------------------------------
+; Detailed note on the XOR operation performed with the CIA2 port value
+;------------------------------------------------------------------
+;On each read, the port will have bits 7 and 6 representing the two data bits transmitted
+;Also on each read, the port will have bits 1 and 0 representing the VIC-II memory mapping bits
+;
+;If we call d7..d0 the 8 data bits to be transmitted, #0 a bit set to 0,
+; and v1 and v0 the 2 VIC-II memory mapping bits, then:
+;
+;		ORA cia2_port_a_data_register		;.A = d1d0#0#0#0#0v1v0
+;		LSR A
+;		LSR A								;.A = #0#0d1d0#0#0#0#0
+;		ORA cia2_port_a_data_register		;.A = d3d2d1d0#0#0v1v0
+;		LSR A
+;		LSR A								;.A = #0#0d3d2d1d0#0#0
+;		ORA cia2_port_a_data_register		;.A = d5d4d3d2d1d0v1v0
+;		LSR A
+;		LSR A								;.A = #0#0d5d4d3d2d1d0
+
+; If we do an OR of the value in the port, we get the VIC-II bits in the returned bitmask again, overwriting d1 and d0 with v1 and v0
+; We would have to save d1 and d0 somewhere else and then restore them.
+;
+; There's a better alternative.
+;
+; Note that bits 7 and 6 in .A are 0, as we did two shift right operations, and that forcefully introduced a 0 in those bits.
+; We also know that the bitmask returned by the port will necessarily hold zeroes in positions 5-2,
+; as only bits 7 and 6 might hold a 1 for the bits 7-2 (those bits related to the serial bus). 
+; This is tied to the implementation of this custom serial transmission mechanism between the drive and the computer.
+;
+; As a refresher, we know that, bit-wise, doing 0 XOR 0 yields 0. And doing 1 XOR 0 yields 1.
+; We can think of XOR'ing against 0 as the identity operation.
+;
+; We also know that XOR is a self-inverse function. That is, (A XOR B) XOR B = A.
+;
+; If we read from the cia2_port_a_data_register now, it will yield 	d7d6#0#0#0#0v1v0
+; Remember that .A currently holds 									#0#0d5d4d3d2d1d0
+;
+; Knowing this, we can observe that if we do .A XOR cia2_port_a_data_register, we get the identity for bits d7 and d6, as well as bits d5..d2.
+;
+; For bits 7 and 6, there's a zero bit in .A in those positions. 
+; For bits 5 to 2, there's a zero bit in the port in the same position.
+;
+; For bits 1 and 0, it's a different story. We might get a complement or the identity for each bit d1 and d0.
+; That is, we get d1 xor v1, and d0 xor v0. 
+; But we don't care, as we have the original bits v1 and v0 saved in bits_1_and_0, which holds #0#0#0#0#0#0v1v0.
+; If we XOR those bits (d1 and d0) a second time with bits_1_and_0, we guarantee to get the original values.
+; (d1 xor v1) xor v1 = d1, and same thing with d0, regardless of the value of v1 and v0.
+;
+; And doing a XOR of the d7 to d1 bits against 0 is the identity function, so we get the same values.
+
+; This clever technique is used here:
+; 	XOR with the port value
+;		EOR cia2_port_a_data_register		;.A = d7d6d5d4d3d2x1x0	, where xi = di xor vi
+; 	Now XOR with the bits_1_and_0 only
+;		EOR bits_1_and_0		;Inlined	;.A = d7d6d5d4d3d2d1d0
+

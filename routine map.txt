@@ -1,0 +1,19 @@
+Routine map
+===========
+
+setup_background		Sets up the scene background
+player_shot				Handles the player being shot and hit (including the doctor response based on his state)
+game_over				Game over handling, including final score calculation
+copy_score_logos		Drawing of metric logos in the score screen
+print_common_phrase		Prints a common phrase on the screen (that is, not one that's part of the NPC-specific dialogue)
+update_random_numbers	Updates the random number generator
+sheriff_fired_shot		The sheriff fired a shot, check if we hit somebody
+scan_input_controllers	Scan and update input based on the joystick state
+handle_click_on_dialogue_phrase		Handle a click of the joystick button when a phrase is highlighted
+handle_dialogue			Dialogue handler (will process outcomes as needed)
+unpack_text				Unpacks packed text (5 bits per symbol)
+8FB5					Start of character_state_handler_ptrs - handlers for each possible NPC state
+finish_scene			Called when a scene is finished
+setup_scene				Called when a scene is being set up
+load_file_from_disk		Loads a scene file from disk
+

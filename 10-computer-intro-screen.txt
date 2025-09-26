@@ -1,0 +1,912 @@
+; ==============================================================================
+; Intro-screen / bootstrap loader (computer-side)
+;
+; Purpose
+;   - Display an intro screen and play music. When the user (or a timeout) requests
+;     continuation, this code restores video/IO state and invokes the KERNAL
+;     LOAD sequence to fetch the next-stage payload from disk (load address
+;     $02ED). The drive-provided payload uses a STOP-vector hijack so the
+;     drive-supplied code will execute in the computer context during LOAD.
+;
+; High-level flow
+;   1) Configure VIC/CIA and map video RAM/charset into a writable bank.
+;   2) Copy graphics/font/sprite/screen data into VIC memory and clear the
+;      original source pages to hide loader artifacts.
+;   3) Relocate a small helper routine into low RAM and clear the source
+;      (anti-forensics / concealment).
+;   4) Initialize sound (SID) and enter a raster-synchronized main loop that
+;      plays music and polls the keyboard.
+;   5) On user action, silence music, restore IO/vic state and call KERNAL
+;      LOAD to read the disk file (e.g. "ACCOLADE INC.") into $02ED.
+;   6) The drive code loaded at $02ED takes over via the STOP-key vector and
+;      continues staged decryption / installation of the final payload.
+;
+; ==============================================================================
+
+processor_data_direction_reg = $00
+processor_port_register = $01
+MSGFLG = $9D	;Kernal Message Control
+;===========================================================
+; VIC-II registers
+;===========================================================
+sprite0_x_lo_register = $d000
+sprite0_y_register = $d001
+sprite1_x_lo_register = $d002
+sprite1_y_register = $d003
+sprite2_x_lo_register = $d004
+sprite2_y_register = $d005
+sprite3_x_lo_register = $d006
+sprite3_y_register = $d007
+sprite4_x_lo_register = $d008
+sprite4_y_register = $d009
+sprite5_x_lo_register = $d00a
+sprite5_y_register = $d00b
+sprite6_x_lo_register = $d00c
+sprite6_y_register = $d00d
+sprite7_x_lo_register = $d00e
+sprite7_y_register = $d00f
+sprites_x_hi_combined_reg = $d010
+vic_screen_control_register_1 = $d011
+vic_raster_compare_register = $d012
+vic_sprite_enable_register = $d015
+vic_screen_control2_reg = $d016
+vic_memory_control_register = $d018
+vic_irq_flag_register = $d019
+vic_irq_mask_register = $d01a
+vic_sprite_priority_reg = $d01b
+vic_sprite_hor_expansion_reg = $d01d
+vic_sprite_to_sprite_collision_reg = $d01e
+vic_border_color_register = $d020
+vic_bkg_color0_register = $d021
+vic_sprite_mcolor0_reg = $d025
+vic_sprite_mcolor1_reg = $d026
+vic_sprite0_color_reg = $d027
+vic_sprite1_color_reg = $d028
+vic_sprite2_color_reg = $d029
+vic_sprite3_color_reg = $d02a
+vic_sprite7_color_reg = $d02e
+
+;===========================================================
+; SID registers
+;===========================================================
+sid_voice1_freq_control_low_reg = $d400
+sid_voice1_freq_control_hi_reg = $d401
+sid_voice1_pulse_width_low_reg = $d402
+sid_voice1_pulse_width_hi_reg = $d403
+sid_voice1_control_reg = $d404
+sid_voice1_attack_decay_reg = $d405
+sid_voice1_sustain_release_reg = $d406
+sid_voice2_control_reg = $d40b
+sid_voice3_freq_control_low_reg = $d40e
+sid_voice3_freq_control_hi_reg = $d40f
+sid_voice3_control_reg = $d412
+sid_voice3_attack_decay_reg = $d413
+sid_voice3_sustain_release_reg = $d414
+sid_filter_cutoff_low_reg = $d415
+sid_filter_cutoff_hi_reg = $d416
+sid_filter_resonance_control_reg = $d417
+sid_volume_and_filter_select_reg = $d418
+
+
+;===========================================================
+; I/O CIA registers
+;===========================================================
+cia1_port_a_data_register = $dc00
+cia1_port_b_data_register = $dc01
+cia1_port_a_data_direction_reg = $dc02
+cia1_port_b_data_direction_reg = $dc03
+cia1_timer_b_hi_register = $dc07
+cia1_irq_status_register = $dc0d
+cia1_control_timer_a_reg = $dc0e
+cia1_control_timer_b_reg = $dc0f
+
+;CIA #2 Port A bits 0-1 control the base VIC-II address space (which is 16K long)
+; Bits		Address space
+;	00		C000-FFFF
+;	01		8000-BFFF
+;	10		4000-7FFF
+;	11		0000-3FFF
+cia2_port_a_data_register = $dd00
+cia2_port_b_data_register = $dd01
+cia2_port_a_data_direction_reg = $dd02
+cia2_port_b_data_direction_reg = $dd03
+cia2_irq_status_register = $dd0d
+
+
+;====================================================
+;====================================================
+src_ptr = $806f
+dest_ptr = $8072
+clear_ptr = $8077
+
+intro_screen_entry_point:
+.C:802a  78          SEI
+;Stop Timer A
+.C:802b  AD 0E DC    LDA cia1_control_timer_a_reg
+.C:802e  29 FE       AND #$FE
+.C:8030  8D 0E DC    STA cia1_control_timer_a_reg
+;----------------------------------------------------
+;Set up video
+;----------------------------------------------------
+;Select 25 rows text display, bitmap graphics mode
+.C:8033  A9 38       LDA #$38
+.C:8035  8D 11 D0    STA vic_screen_control_register_1
+;Set VIC-II memory bank to bank #1 ($4000-7FFF)
+.C:8038  AD 00 DD    LDA cia2_port_a_data_register
+;Clear bits 1 and 0
+.C:803b  29 FC       AND #$FC
+;Set bit 1
+.C:803d  09 02       ORA #$02
+.C:803f  8D 00 DD    STA cia2_port_a_data_register
+;Set video matrix base address to 7K + base address ($4000) = $B000
+;Set character dot data base address to 8K + base address ($4000) = $C000
+.C:8042  A9 78       LDA #$78
+.C:8044  8D 18 D0    STA vic_memory_control_register
+;Set border color to #00 (black)
+.C:8047  A9 00       LDA #$00
+.C:8049  8D 20 D0    STA vic_border_color_register
+;----------------------------------------------------
+;Move memory from $2C00-5BFF to $D000-FFFF - clear out source memory after copy
+;----------------------------------------------------
+.C:804c  A9 00       LDA #$00
+.C:804e  8D 6F 80    STA <src_ptr
+.C:8051  8D 77 80    STA <clear_ptr
+.C:8054  A9 2C       LDA #$2C
+.C:8056  8D 70 80    STA >src_ptr
+.C:8059  8D 78 80    STA >clear_ptr
+.C:805c  A9 00       LDA #$00
+.C:805e  8D 72 80    STA <dest_ptr
+.C:8061  A9 D0       LDA #$D0
+.C:8063  8D 73 80    STA >dest_ptr
+;Map out KERNAL, BASIC ROMs and I/O registers, map in memory
+.C:8066  A5 01       LDA processor_port_register
+.C:8068  29 F8       AND #$F8
+.C:806a  85 01       STA processor_port_register
+;Use .Y as index
+.C:806c  A0 00       LDY #$00
+copy_loop:
+src_ptr = $806f
+.C:806e  B9 00 00    LDA src_ptr,Y
+dest_ptr = $8072
+.C:8071  99 00 00    STA dest_ptr,Y
+.C:8074  A9 00       LDA #$00
+clear_ptr = $8077
+.C:8076  99 00 00    STA clear_ptr,Y
+.C:8079  C8          INY
+.C:807a  D0 F2       BNE copy_loop
+.C:807c  EE 70 80    INC >src_ptr
+.C:807f  EE 78 80    INC >clear_ptr
+.C:8082  EE 73 80    INC >dest_ptr
+.C:8085  D0 E7       BNE copy_loop
+;----------------------------------------------------
+;Map in KERNAL, BASIC and I/O registers again
+.C:8087  A5 01       LDA processor_port_register
+.C:8089  09 07       ORA #$07
+.C:808b  85 01       STA processor_port_register
+;----------------------------------------------------
+;Relocate code from $80B0-8115 to $037F-03E4
+;----------------------------------------------------
+.C:808d  A2 65       LDX #$65
+relocate_loop:
+.C:808f  BD B0 80    LDA $80B0,X
+.C:8092  9D 7F 03    STA $037F,X
+.C:8095  CA          DEX
+.C:8096  D0 F7       BNE relocate_loop
+;Only control messages will be displayed
+.C:8098  A9 80       LDA #$80
+.C:809a  85 9D       STA MSGFLG
+;Set logical address 8, device 8, secondary address 1
+.C:809c  A9 08       LDA #$08
+.C:809e  A2 08       LDX #$08
+.C:80a0  A0 01       LDY #$01
+.C:80a2  20 BA FF    JSR SETLFS
+;Set filename to load as "ACCOLADE INC."
+.C:80a5  A0 03       LDY #$03
+.C:80a7  A2 D9       LDX #$D9
+.C:80a9  A9 0C       LDA #$0C
+.C:80ab  20 BD FF    JSR SETNAM
+;Jump to the relocated code
+.C:80ae  4C 80 03    JMP $0380
+;====================================================
+Relocated code at 037F
+
+keyboard_state = $27a1
+
+;Clear out the source of the relocated code ($8029-8115)
+.C:0380  A2 EC       LDX #$EC
+clear_relocated_source:
+.C:0382  BD FF 0F    LDA $0FFF,X
+.C:0385  9D 29 80    STA $8029,X
+.C:0388  CA          DEX
+.C:0389  D0 F7       BNE clear_relocated_source
+;Clear out the byte count and addresses of the previous instructions used to clear the relocated code, 
+; to leave no traces but trying not to draw much attention
+.C:038b  A9 00       LDA #$00
+.C:038d  8D 81 03    STA $0381
+.C:0390  8D 83 03    STA $0383
+.C:0393  8D 84 03    STA $0384
+.C:0396  8D 86 03    STA $0386
+.C:0399  8D 87 03    STA $0387
+;
+.C:039c  8D 00 DC    STA cia1_port_a_data_register
+.C:039f  A9 FF       LDA #$FF
+.C:03a1  8D 02 DC    STA cia1_port_a_data_direction_reg
+;Save a copy of the keyboard state (to detect if there are changes later)
+.C:03a4  AD 01 DC    LDA cia1_port_b_data_register
+.C:03a7  8D A1 27    STA keyboard_state
+;Setup sound for playback of music
+.C:03aa  A0 28       LDY #$28
+.C:03ac  A9 80       LDA #$80
+.C:03ae  20 2A 81    JSR setup_sound
+;----------------------------------
+; Run a busy loop, periodically executing code when the #F7 raster line is hit
+;----------------------------------
+busy_loop:
+.C:03b1  A9 F7       LDA #$F7
+wait_for_raster_line:
+.C:03b3  CD 12 D0    CMP vic_raster_compare_register
+.C:03b6  D0 FB       BNE wait_for_raster_line
+;Update the music playback
+.C:03b8  20 69 81    JSR play_music
+;Check if the keyboard state changed
+.C:03bb  AD 01 DC    LDA cia1_port_b_data_register
+.C:03be  4D A1 27    EOR keyboard_state
+;If so, continue loading
+.C:03c1  D0 05       BNE continue_loading
+;While the intro screen must be shown, keep looping
+.C:03c3  AD A3 27    LDA $27A3
+.C:03c6  D0 E9       BNE busy_loop
+;----------------------------------
+continue_loading:
+.C:03c8  20 16 81    JSR silence_sound
+.C:03cb  A9 00       LDA #$00
+.C:03cd  8D 02 DC    STA cia1_port_a_data_direction_reg
+.C:03d0  8D 11 D0    STA vic_screen_control_register_1
+;Snapshot "before-load-main-file"
+;Load the file from diskette using the Kernal
+.C:03d3  20 D5 FF    JSR LOAD		;Kernal LOAD routine
+;Load address = $02ED
+;The LOAD will overwrite existing code again - DEBUG PENDING
+.C:03d6  6C FC FF    JMP (reset_vector)
+
+filename = $03d9 "ACCOLADE INC."
+
+load_ptr = $ae
+xor_ptr = $08
+encrypted_data_ptr = $c3
+
+;Code loaded by the LOAD above
+;On entry, .Y = #00, $AE/AF = $032A
+.C:02ed  78          SEI
+;Pull $F4FB from the stack, which is the return address when the LOAD routine invokes the STOP key scan routine
+.C:02ee  68          PLA
+.C:02ef  68          PLA
+;Set encrypted_data_ptr = $022A
+;Set xor_ptr = $0200
+.C:02f0  84 08       STY <xor_ptr
+.C:02f2  C6 AF       DEC >load_ptr
+.C:02f4  A5 AF       LDA >load_ptr
+.C:02f6  85 C4       STA >encrypted_data_ptr
+.C:02f8  85 09       STA >xor_ptr
+.C:02fa  A5 AE       LDA <load_ptr
+.C:02fc  85 C3       STA <encrypted_data_ptr
+.C:02fe  49 9C       EOR #$9C
+.C:0300  85 AE       STA <load_ptr
+;----------------------------------------
+; Decrypt data
+;----------------------------------------
+.C:0302  A0 ED       LDY #$ED
+;When using .Y as index with a value of #ED, the final index value will be #00.
+;So a total of 0x100 - 0xED = 0x13 iterations happen
+;The memory ranges in scope for the pointers are:
+; encrypted_data_ptr - reading/writing on $0317-032A
+; xor_ptr - reading on $02ED-0300
+decrypt_loop:
+.C:0304  B1 C3       LDA (encrypted_data_ptr),Y
+.C:0306  51 08       EOR (xor_ptr),Y
+.C:0308  91 C3       STA (encrypted_data_ptr),Y
+.C:030a  C8          INY
+.C:030b  D0 F7       BNE decrypt_loop
+.C:030d  A0 58       LDY #$58
+.C:030f  20 16 03    JSR $0316
+.C:0312  30 A2       BMI $02B6
+
+
+xor_data:
+>C:02ed  78 68 68 84  08 c6 af a5  af 85 c4 85  09 a5 ae 85  c3 49 9c 85 
+encrypted_data:
+>C:0317  dd 97 f9 2a  28 63 50 f4  01 14 cc 0d  19 54 ce 8d  43 ed 02 3e
+decrypted_data:
+>C:0317  a5 ff 91 ae  20 a5 ff 51  ae 91 08 88  10 f1 60 08 80 a4 9e 3e   
+;032A breaks the execution
+;Same trick used in stage 1 again, overwrite the STOP key scan routine at $0328-0329 with the entry point desired ($02ED)
+
+;the decrypted code at $0316 is:
+
+;On entry, .Y = #58, load_ptr = $02b6, decrypted_ptr = $0200
+;So the load_ptr covers the area $02B6-030E
+; and decrypted_ptr covers the area $0200-0258
+load_ptr = $ae
+decrypted_ptr = $08
+decrypt_loop:
+.C:0316  20 A5 FF    JSR ACPTR
+.C:0319  91 AE       STA (load_ptr),Y
+.C:031b  20 A5 FF    JSR ACPTR
+.C:031e  51 AE       EOR (load_ptr),Y
+.C:0320  91 08       STA (decrypted_ptr),Y
+.C:0322  88          DEY
+.C:0323  10 F1       BPL decrypt_loop
+.C:0325  60          RTS
+
+;===============================================
+; The decrypted data at $0200 is the same as stage 04 (drive configurator)
+read_bytes_from_serial_bus:
+
+;The loaded data at $02B6 is the same as stage 04 (configure_disk_drive):
+configure_disk_drive:
+
+;The only difference seen is the memory_write disk command
+;"M-W" D6 00 02 10 E2 FF	;the bytes values are #10, #E2 instead of #15, #EA
+
+;In main_loader_entry_point, first byte read is #00, second byte is #04
+;So the write address is $0400-B073
+;Byte read
+;===============================================
+silence_sound:
+.C:8116  A9 00       LDA #$00
+.C:8118  8D A3 27    STA $27A3
+.C:811b  8D 04 D4    STA sid_voice1_control_reg
+.C:811e  8D 0B D4    STA sid_voice2_control_reg
+.C:8121  AD A2 27    LDA $27A2
+.C:8124  D0 03       BNE $8129
+.C:8126  8D 12 D4    STA sid_voice3_control_reg
+.C:8129  60          RTS
+;===============================================
+volume_and_filter_select = $27a5
+
+setup_sound:
+.C:812a  A2 00       LDX #$00
+.C:812c  8E A2 27    STX $27A2
+.C:812f  8E A5 27    STX volume_and_filter_select
+.C:8132  A2 00       LDX #$00
+.C:8134  8E A3 27    STX $27A3
+;Setup sound_read_ptr with the values from .Y and .A
+.C:8137  8D 5E 81    STA <sound_read_ptr
+.C:813a  8C 5F 81    STY >sound_read_ptr
+.C:813d  98          TYA
+.C:813e  29 F0       AND #$F0
+.C:8140  8D D2 27    STA $27D2
+;Setup voices
+.C:8143  A9 08       LDA #$08
+.C:8145  8D 04 D4    STA sid_voice1_control_reg
+.C:8148  8D 0B D4    STA sid_voice2_control_reg
+.C:814b  8D 12 D4    STA sid_voice3_control_reg
+.C:814e  AD A5 27    LDA volume_and_filter_select
+.C:8151  8D 18 D4    STA sid_volume_and_filter_select_reg
+.C:8154  20 D4 82    JSR setup_sound_data
+.C:8157  A9 07       LDA #$07
+.C:8159  8D A3 27    STA $27A3
+.C:815c  60          RTS
+;===============================================
+read_next_sound_byte:
+sound_read_ptr = $815e
+.C:815d  AD 00 10    LDA sound_read_ptr
+.C:8160  EE 5E 81    INC <sound_read_ptr
+.C:8163  D0 03       BNE exit
+.C:8165  EE 5F 81    INC >sound_read_ptr
+exit:
+.C:8168  60          RTS
+;===============================================
+play_music:
+.C:8169  AD A3 27    LDA $27A3
+.C:816c  F0 03       BEQ $8171
+.C:816e  20 45 82    JSR $8245
+:
+.C:8171  AD A4 27    LDA $27A4
+.C:8174  29 0F       AND #$0F
+.C:8176  8D A4 27    STA $27A4
+.C:8179  AD A5 27    LDA volume_and_filter_select
+.C:817c  29 0F       AND #$0F
+.C:817e  CD A4 27    CMP $27A4
+.C:8181  F0 10       BEQ $8193
+.C:8183  90 05       BCC $818A
+.C:8185  CE A5 27    DEC volume_and_filter_select
+.C:8188  B0 03       BCS $818D
+.C:818a  EE A5 27    INC volume_and_filter_select
+.C:818d  AD A5 27    LDA volume_and_filter_select
+.C:8190  8D 18 D4    STA sid_volume_and_filter_select_reg
+.C:8193  60          RTS
+.C:8194  E0 0E       CPX #$0E
+.C:8196  90 05       BCC $819D
+.C:8198  AC A2 27    LDY $27A2
+.C:819b  D0 06       BNE $81A3
+.C:819d  BD AC 27    LDA $27AC,X
+.C:81a0  9D 04 D4    STA sid_voice1_control_reg,X
+.C:81a3  60          RTS
+.C:81a4  B9 F7 27    LDA $27F7,Y
+.C:81a7  9D 06 D4    STA sid_voice1_sustain_release_reg,X
+.C:81aa  B9 F6 27    LDA $27F6,Y
+.C:81ad  9D 05 D4    STA sid_voice1_attack_decay_reg,X
+.C:81b0  B9 F9 27    LDA $27F9,Y
+.C:81b3  9D 02 D4    STA sid_voice1_pulse_width_low_reg,X
+.C:81b6  B9 FA 27    LDA $27FA,Y
+.C:81b9  9D 03 D4    STA sid_voice1_pulse_width_hi_reg,X
+.C:81bc  B9 FD 27    LDA $27FD,Y
+.C:81bf  C9 10       CMP #$10
+.C:81c1  BD E4 85    LDA $85E4,X
+.C:81c4  2D D3 27    AND $27D3
+.C:81c7  90 3C       BCC $8205
+.C:81c9  B9 FC 27    LDA $27FC,Y
+.C:81cc  8D 15 D4    STA sid_filter_cutoff_low_reg
+.C:81cf  B9 FD 27    LDA $27FD,Y
+.C:81d2  8D D4 27    STA $27D4
+.C:81d5  B9 FC 27    LDA $27FC,Y
+.C:81d8  4E D4 27    LSR $27D4
+.C:81db  6A          ROR A
+.C:81dc  4E D4 27    LSR $27D4
+.C:81df  6A          ROR A
+.C:81e0  4E D4 27    LSR $27D4
+.C:81e3  6A          ROR A
+.C:81e4  8D 16 D4    STA sid_filter_cutoff_hi_reg
+.C:81e7  AD A5 27    LDA volume_and_filter_select
+.C:81ea  29 0F       AND #$0F
+.C:81ec  8D A5 27    STA volume_and_filter_select
+.C:81ef  B9 FD 27    LDA $27FD,Y
+.C:81f2  29 F0       AND #$F0
+.C:81f4  0D A5 27    ORA volume_and_filter_select
+.C:81f7  8D A5 27    STA volume_and_filter_select
+.C:81fa  8D 18 D4    STA sid_volume_and_filter_select_reg
+.C:81fd  B9 FB 27    LDA $27FB,Y
+.C:8200  29 F0       AND #$F0
+.C:8202  1D E3 85    ORA $85E3,X
+.C:8205  8D 17 D4    STA sid_filter_resonance_control_reg
+.C:8208  8D D3 27    STA $27D3
+.C:820b  B9 FB 27    LDA $27FB,Y
+.C:820e  29 07       AND #$07
+.C:8210  A8          TAY
+.C:8211  AD D5 27    LDA $27D5
+.C:8214  29 3F       AND #$3F
+.C:8216  F0 05       BEQ $821D
+.C:8218  18          CLC
+.C:8219  79 F5 85    ADC $85F5,Y
+.C:821c  0A          ASL A
+.C:821d  A8          TAY
+.C:821e  B9 FA 85    LDA $85FA,Y
+.C:8221  9D 00 D4    STA sid_voice1_freq_control_low_reg,X
+.C:8224  B9 FB 85    LDA $85FB,Y
+.C:8227  9D 01 D4    STA sid_voice1_freq_control_hi_reg,X
+.C:822a  19 FA 85    ORA $85FA,Y
+.C:822d  8D D5 27    STA $27D5
+.C:8230  AC D6 27    LDY $27D6
+.C:8233  BD AC 27    LDA $27AC,X
+.C:8236  9D 04 D4    STA sid_voice1_control_reg,X
+.C:8239  B9 F8 27    LDA $27F8,Y
+.C:823c  AC D5 27    LDY $27D5
+.C:823f  F0 03       BEQ $8244
+.C:8241  9D 04 D4    STA sid_voice1_control_reg,X
+.C:8244  60          RTS
+;===============================================
+.C:8245  A2 00       LDX #$00
+.C:8247  20 4A 83    JSR $834A
+.C:824a  8A          TXA
+.C:824b  18          CLC
+.C:824c  69 07       ADC #$07
+.C:824e  AA          TAX
+.C:824f  E0 15       CPX #$15
+.C:8251  90 F4       BCC $8247
+.C:8253  AD C0 27    LDA $27C0
+.C:8256  0D C7 27    ORA $27C7
+.C:8259  0D CE 27    ORA $27CE
+.C:825c  D0 72       BNE $82D0
+.C:825e  18          CLC
+.C:825f  A0 01       LDY #$01
+.C:8261  6D AA 27    ADC $27AA
+.C:8264  CC AA 27    CPY $27AA
+.C:8267  F0 14       BEQ $827D
+.C:8269  6D B1 27    ADC $27B1
+.C:826c  CC B1 27    CPY $27B1
+.C:826f  F0 0C       BEQ $827D
+.C:8271  6D B8 27    ADC $27B8
+.C:8274  CC B8 27    CPY $27B8
+.C:8277  F0 04       BEQ $827D
+.C:8279  C9 0C       CMP #$0C
+.C:827b  90 53       BCC $82D0
+;-------------------------------------------
+:
+;Use .X as voice register offset (#0E = 14, 7 registers per voice)
+.C:827d  A2 0E       LDX #$0E
+next_voice:
+.C:827f  A9 01       LDA #$01
+.C:8281  BC AA 27    LDY $27AA,X
+.C:8284  F0 03       BEQ $8289
+.C:8286  9D AA 27    STA $27AA,X
+:
+.C:8289  9D C0 27    STA $27C0,X
+.C:828c  A9 C0       LDA #$C0
+.C:828e  9D C1 27    STA $27C1,X
+.C:8291  8A          TXA
+.C:8292  F0 1B       BEQ $82AF
+.C:8294  20 BB 85    JSR read_from_another_read_ptr
+.C:8297  A8          TAY
+.C:8298  20 BB 85    JSR read_from_another_read_ptr
+.C:829b  C0 FF       CPY #$FF
+.C:829d  B0 0C       BCS $82AB
+.C:829f  29 C0       AND #$C0
+.C:82a1  DD E5 85    CMP $85E5,X
+.C:82a4  B0 05       BCS $82AB
+.C:82a6  9D C1 27    STA $27C1,X
+.C:82a9  90 03       BCC $82AE
+:
+.C:82ab  20 C8 83    JSR decrement_counter_3bytes
+:
+.C:82ae  8A          TXA
+:
+; Decrement .A by 7 to reference the next set of voice registers
+.C:82af  38          SEC
+.C:82b0  E9 07       SBC #$07
+.C:82b2  AA          TAX
+.C:82b3  10 CA       BPL next_voice
+;-------------------------------------------
+.C:82b5  AD CF 27    LDA $27CF
+.C:82b8  D0 16       BNE exit
+.C:82ba  A2 0E       LDX #$0E
+.C:82bc  20 BB 85    JSR read_from_another_read_ptr
+.C:82bf  A8          TAY
+.C:82c0  20 BB 85    JSR read_from_another_read_ptr
+.C:82c3  C0 FF       CPY #$FF
+.C:82c5  B0 0A       BCS $82D1
+.C:82c7  29 C0       AND #$C0
+.C:82c9  C9 40       CMP #$40
+.C:82cb  D0 04       BNE $82D1
+.C:82cd  8D CF 27    STA $27CF
+exit:
+.C:82d0  60          RTS
+.C:82d1  4C C8 83    JMP decrement_counter_3bytes
+;===============================================
+setup_sound_data:
+.C:82d4  A9 80       LDA #$80
+.C:82d6  8D BF 27    STA $27BF
+.C:82d9  8D C6 27    STA $27C6
+.C:82dc  8D CD 27    STA $27CD
+.C:82df  20 5D 81    JSR read_next_sound_byte
+.C:82e2  8D D0 27    STA $27D0
+.C:82e5  8D D4 27    STA $27D4
+.C:82e8  20 5D 81    JSR read_next_sound_byte
+.C:82eb  A8          TAY
+.C:82ec  29 0F       AND #$0F
+.C:82ee  8D D1 27    STA $27D1
+.C:82f1  98          TYA
+.C:82f2  4A          LSR A
+.C:82f3  4A          LSR A
+.C:82f4  4A          LSR A
+.C:82f5  4A          LSR A
+.C:82f6  8D A4 27    STA $27A4
+.C:82f9  A9 00       LDA #$00
+.C:82fb  A2 14       LDX #$14
+clear_loop:
+.C:82fd  8D D3 27    STA $27D3
+.C:8300  9D A6 27    STA $27A6,X
+.C:8303  CA          DEX
+.C:8304  10 FA       BPL clear_loop
+read_bytes_1:
+.C:8306  20 5D 81    JSR read_next_sound_byte	
+.C:8309  0A          ASL A
+;Eventually, a byte #FF is read and the carry is set, so #FF is used to signal an exit from this loop
+.C:830a  B0 11       BCS section_2
+.C:830c  0A          ASL A
+.C:830d  0A          ASL A
+.C:830e  A8          TAY
+.C:830f  A2 07       LDX #$07
+read_bytes_2:
+.C:8311  20 5D 81    JSR read_next_sound_byte
+.C:8314  99 F6 27    STA $27F6,Y
+.C:8317  C8          INY
+.C:8318  CA          DEX
+.C:8319  10 F6       BPL read_bytes_2
+.C:831b  30 E9       BMI read_bytes_1
+section_2:
+.C:831d  AD 5E 81    LDA <sound_read_ptr
+.C:8320  8D BB 27    STA $27BB
+.C:8323  8D C2 27    STA $27C2
+.C:8326  8D C9 27    STA $27C9
+.C:8329  AD 5F 81    LDA >sound_read_ptr
+.C:832c  8D BC 27    STA $27BC
+.C:832f  8D C3 27    STA $27C3
+.C:8332  8D CA 27    STA $27CA
+.C:8335  AD D1 27    LDA $27D1
+.C:8338  0E D4 27    ASL $27D4
+.C:833b  2A          ROL A
+.C:833c  38          SEC
+.C:833d  2A          ROL A
+.C:833e  8D A9 27    STA $27A9
+.C:8341  8D B0 27    STA $27B0
+.C:8344  8D B7 27    STA $27B7
+.C:8347  4C 7D 82    JMP $827D
+;===============================================
+.C:834a  A9 01       LDA #$01
+.C:834c  8D D6 27    STA $27D6
+.C:834f  8D D4 27    STA $27D4
+.C:8352  BC C1 27    LDY $27C1,X
+.C:8355  BD C0 27    LDA $27C0,X
+.C:8358  F0 3D       BEQ $8397
+.C:835a  20 BB 85    JSR read_from_another_read_ptr
+.C:835d  8D D4 27    STA $27D4
+.C:8360  A8          TAY
+.C:8361  20 BB 85    JSR read_from_another_read_ptr
+.C:8364  8D D5 27    STA $27D5
+.C:8367  C0 FF       CPY #$FF
+.C:8369  BC C1 27    LDY $27C1,X
+.C:836c  90 04       BCC $8372
+.C:836e  A9 80       LDA #$80
+.C:8370  D0 26       BNE $8398
+.C:8372  C0 C0       CPY #$C0
+.C:8374  29 C0       AND #$C0
+.C:8376  A8          TAY
+.C:8377  B0 07       BCS $8380
+.C:8379  DD C1 27    CMP $27C1,X
+.C:837c  F0 11       BEQ $838F
+.C:837e  90 0F       BCC $838F
+.C:8380  5D E5 85    EOR $85E5,X
+.C:8383  8D D6 27    STA $27D6
+.C:8386  F0 13       BEQ $839B
+.C:8388  A9 01       LDA #$01
+.C:838a  8D D4 27    STA $27D4
+.C:838d  D0 08       BNE $8397
+.C:838f  A9 00       LDA #$00
+.C:8391  9D C0 27    STA $27C0,X
+.C:8394  20 C8 83    JSR decrement_counter_3bytes
+:
+.C:8397  98          TYA
+.C:8398  9D C1 27    STA $27C1,X
+.C:839b  BD A9 27    LDA $27A9,X
+.C:839e  F0 3C       BEQ $83DC
+.C:83a0  BD A7 27    LDA $27A7,X
+.C:83a3  18          CLC
+.C:83a4  6D D0 27    ADC $27D0
+.C:83a7  9D A7 27    STA $27A7,X
+.C:83aa  BD A8 27    LDA $27A8,X
+.C:83ad  6D D1 27    ADC $27D1
+.C:83b0  9D A8 27    STA $27A8,X
+.C:83b3  DD A9 27    CMP $27A9,X
+.C:83b6  B0 24       BCS $83DC
+.C:83b8  AD D6 27    LDA $27D6
+.C:83bb  F0 0B       BEQ decrement_counter_3bytes
+.C:83bd  AD D4 27    LDA $27D4
+.C:83c0  C9 FF       CMP #$FF
+.C:83c2  90 03       BCC $83C7
+.C:83c4  4C 6E 84    JMP $846E
+.C:83c7  60          RTS
+;===============================================
+decrement_counter_3bytes:
+.C:83c8  BD BB 27    LDA $27BB,X
+.C:83cb  D0 03       BNE $83D0
+.C:83cd  DE BC 27    DEC $27BC,X
+:
+.C:83d0  DE BB 27    DEC $27BB,X
+.C:83d3  D0 03       BNE $83D8
+.C:83d5  DE BC 27    DEC $27BC,X
+:
+.C:83d8  DE BB 27    DEC $27BB,X
+.C:83db  60          RTS
+;===============================================
+.C:83dc  BC AA 27    LDY $27AA,X
+.C:83df  C0 01       CPY #$01
+.C:83e1  D0 0C       BNE $83EF
+.C:83e3  AD D4 27    LDA $27D4
+.C:83e6  C9 F0       CMP #$F0
+.C:83e8  B0 03       BCS $83ED
+.C:83ea  20 94 81    JSR $8194
+.C:83ed  A0 00       LDY #$00
+.C:83ef  FE AA 27    INC $27AA,X
+.C:83f2  C0 03       CPY #$03
+.C:83f4  90 C2       BCC $83B8
+.C:83f6  DE AA 27    DEC $27AA,X
+.C:83f9  C0 04       CPY #$04
+.C:83fb  BD C0 27    LDA $27C0,X
+.C:83fe  F0 05       BEQ $8405
+.C:8400  AD D6 27    LDA $27D6
+.C:8400  AD D6 27    LDA $27D6
+.C:8403  F0 1A       BEQ $841F
+.C:8405  B0 10       BCS $8417
+.C:8407  BD A8 27    LDA $27A8,X
+.C:840a  38          SEC
+.C:840b  FD A9 27    SBC $27A9,X
+.C:840e  9D A8 27    STA $27A8,X
+.C:8411  FE AA 27    INC $27AA,X
+.C:8414  20 94 81    JSR $8194
+.C:8417  A9 00       LDA #$00
+.C:8419  9D A9 27    STA $27A9,X
+.C:841c  4C BD 83    JMP $83BD
+.C:841f  BD A8 27    LDA $27A8,X
+.C:8422  38          SEC
+.C:8423  FD A9 27    SBC $27A9,X
+.C:8426  9D A8 27    STA $27A8,X
+.C:8429  BD E5 85    LDA $85E5,X
+.C:842c  9D C1 27    STA $27C1,X
+.C:842f  AD D4 27    LDA $27D4
+.C:8432  29 0F       AND #$0F
+.C:8434  A8          TAY
+.C:8435  B9 D3 85    LDA $85D3,Y
+.C:8438  9D A9 27    STA $27A9,X
+.C:843b  AD D4 27    LDA $27D4
+.C:843e  C9 F0       CMP #$F0
+.C:8440  B0 06       BCS $8448
+.C:8442  4A          LSR A
+.C:8443  29 78       AND #$78
+.C:8445  9D AB 27    STA $27AB,X
+.C:8448  BC AB 27    LDY $27AB,X
+.C:844b  8C D6 27    STY $27D6
+.C:844e  A9 00       LDA #$00
+.C:8450  9D AA 27    STA $27AA,X
+.C:8453  E0 0E       CPX #$0E
+.C:8455  AD A2 27    LDA $27A2
+.C:8458  F0 05       BEQ $845F
+.C:845a  90 03       BCC $845F
+.C:845c  4C 62 84    JMP $8462
+.C:845f  20 A4 81    JSR $81A4
+.C:8462  AC D6 27    LDY $27D6
+.C:8465  B9 F8 27    LDA $27F8,Y
+.C:8468  29 FE       AND #$FE
+.C:846a  9D AC 27    STA $27AC,X
+.C:846d  60          RTS
+;===============================================
+.C:846e  AD D5 27    LDA $27D5
+.C:8471  C9 FE       CMP #$FE
+.C:8473  D0 49       BNE $84BE
+.C:8475  BD BF 27    LDA $27BF,X
+.C:8478  30 F3       BMI $846D
+.C:847a  F0 05       BEQ $8481
+.C:847c  DE BF 27    DEC $27BF,X
+.C:847f  F0 0D       BEQ $848E
+.C:8481  BD BD 27    LDA $27BD,X
+.C:8484  9D BB 27    STA $27BB,X
+.C:8487  BD BE 27    LDA $27BE,X
+.C:848a  9D BC 27    STA $27BC,X
+.C:848d  60          RTS
+;===============================================
+.C:848e  BD E6 85    LDA $85E6,X
+.C:8491  18          CLC
+.C:8492  7D A6 27    ADC $27A6,X
+.C:8495  A8          TAY
+.C:8496  B9 D7 27    LDA $27D7,Y
+.C:8499  9D BE 27    STA $27BE,X
+.C:849c  B9 D6 27    LDA $27D6,Y
+.C:849f  9D BD 27    STA $27BD,X
+.C:84a2  B9 D5 27    LDA $27D5,Y
+.C:84a5  9D BC 27    STA $27BC,X
+.C:84a8  B9 D4 27    LDA $27D4,Y
+.C:84ab  9D BB 27    STA $27BB,X
+.C:84ae  B9 D3 27    LDA $27D3,Y
+.C:84b1  9D BF 27    STA $27BF,X
+.C:84b4  BD A6 27    LDA $27A6,X
+.C:84b7  38          SEC
+.C:84b8  E9 05       SBC #$05
+.C:84ba  9D A6 27    STA $27A6,X
+.C:84bd  60          RTS
+;===============================================
+.C:84be  C9 FF       CMP #$FF
+.C:84c0  D0 22       BNE $84E4
+.C:84c2  BD A8 27    LDA $27A8,X
+.C:84c5  DD A9 27    CMP $27A9,X
+.C:84c8  90 17       BCC $84E1
+.C:84ca  BD E4 85    LDA $85E4,X
+.C:84cd  2D A3 27    AND $27A3
+.C:84d0  8D A3 27    STA $27A3
+.C:84d3  E0 0E       CPX #$0E
+.C:84d5  90 05       BCC $84DC
+.C:84d7  AD A2 27    LDA $27A2
+.C:84da  D0 05       BNE $84E1
+.C:84dc  A9 08       LDA #$08
+.C:84de  20 9D 81    JSR $819D
+.C:84e1  4C C8 83    JMP decrement_counter_3bytes
+.C:84e4  C9 F0       CMP #$F0
+.C:84e6  90 03       BCC $84EB
+.C:84e8  EA          NOP
+.C:84e9  EA          NOP
+.C:84ea  60          RTS
+;===============================================
+.C:84eb  C9 10       CMP #$10
+.C:84ed  B0 27       BCS $8516
+.C:84ef  E0 07       CPX #$07
+.C:84f1  B0 20       BCS $8513
+.C:84f3  29 0F       AND #$0F
+.C:84f5  8D D1 27    STA $27D1
+.C:84f8  8D A8 27    STA $27A8
+.C:84fb  A9 00       LDA #$00
+.C:84fd  8D AE 27    STA $27AE
+.C:8500  8D AF 27    STA $27AF
+.C:8503  8D B5 27    STA $27B5
+.C:8506  8D B6 27    STA $27B6
+.C:8509  20 BB 85    JSR read_from_another_read_ptr
+.C:850c  8D D0 27    STA $27D0
+.C:850f  8D A7 27    STA $27A7
+.C:8512  60          RTS
+;===============================================
+.C:8513  4C BB 85    JMP read_from_another_read_ptr
+;===============================================
+.C:8516  C9 30       CMP #$30
+.C:8518  B0 19       BCS $8533
+.C:851a  29 1F       AND #$1F
+.C:851c  C9 10       CMP #$10
+.C:851e  90 02       BCC $8522
+.C:8520  09 F0       ORA #$F0
+.C:8522  6D A4 27    ADC $27A4
+.C:8525  10 02       BPL $8529
+.C:8527  A9 00       LDA #$00
+.C:8529  C9 10       CMP #$10
+.C:852b  90 02       BCC $852F
+.C:852d  A9 0F       LDA #$0F
+.C:852f  8D A4 27    STA $27A4
+.C:8532  60          RTS
+;===============================================
+.C:8533  C9 60       CMP #$60
+.C:8535  B0 21       BCS $8558
+.C:8537  0A          ASL A
+.C:8538  0A          ASL A
+.C:8539  C9 C0       CMP #$C0
+.C:853b  B0 07       BCS $8544
+.C:853d  5D E5 85    EOR $85E5,X
+.C:8540  29 C0       AND #$C0
+.C:8542  D0 CF       BNE $8513
+.C:8544  AD D5 27    LDA $27D5
+.C:8547  29 0F       AND #$0F
+.C:8549  0D D2 27    ORA $27D2
+.C:854c  A8          TAY
+.C:854d  20 BB 85    JSR read_from_another_read_ptr
+.C:8550  9D BB 27    STA $27BB,X
+.C:8553  98          TYA
+.C:8554  9D BC 27    STA $27BC,X
+.C:8557  60          RTS
+;===============================================
+.C:8558  4A          LSR A
+.C:8559  4A          LSR A
+.C:855a  4A          LSR A
+.C:855b  4A          LSR A
+.C:855c  38          SEC
+.C:855d  E9 06       SBC #$06
+.C:855f  8D D4 27    STA $27D4
+.C:8562  AD D5 27    LDA $27D5
+.C:8565  29 0F       AND #$0F
+.C:8567  0D D2 27    ORA $27D2
+.C:856a  8D D5 27    STA $27D5
+.C:856d  BD E6 85    LDA $85E6,X
+.C:8570  18          CLC
+.C:8571  7D A6 27    ADC $27A6,X
+.C:8574  A8          TAY
+.C:8575  20 BB 85    JSR read_from_another_read_ptr
+.C:8578  8D D6 27    STA $27D6
+.C:857b  BD BF 27    LDA $27BF,X
+.C:857e  99 D8 27    STA $27D8,Y
+.C:8581  BD BB 27    LDA $27BB,X
+.C:8584  99 D9 27    STA $27D9,Y
+.C:8587  BD BC 27    LDA $27BC,X
+.C:858a  99 DA 27    STA $27DA,Y
+.C:858d  BD BD 27    LDA $27BD,X
+.C:8590  99 DB 27    STA $27DB,Y
+.C:8593  BD BE 27    LDA $27BE,X
+.C:8596  99 DC 27    STA $27DC,Y
+.C:8599  BD A6 27    LDA $27A6,X
+.C:859c  18          CLC
+.C:859d  69 05       ADC #$05
+.C:859f  9D A6 27    STA $27A6,X
+.C:85a2  AD D4 27    LDA $27D4
+.C:85a5  9D BF 27    STA $27BF,X
+.C:85a8  AD D6 27    LDA $27D6
+.C:85ab  9D BB 27    STA $27BB,X
+.C:85ae  9D BD 27    STA $27BD,X
+.C:85b1  AD D5 27    LDA $27D5
+.C:85b4  9D BC 27    STA $27BC,X
+.C:85b7  9D BE 27    STA $27BE,X
+.C:85ba  60          RTS
+;===============================================
+read_from_another_read_ptr:
+.C:85bb  BD BB 27    LDA $27BB,X
+.C:85be  8D C8 85    STA <another_read_ptr
+.C:85c1  BD BC 27    LDA $27BC,X
+.C:85c4  8D C9 85    STA >another_read_ptr
+another_read_ptr = $85c8
+.C:85c7  AD 00 10    LDA another_read_ptr
+.C:85ca  FE BB 27    INC $27BB,X
+.C:85cd  D0 03       BNE $85D2
+.C:85cf  FE BC 27    INC $27BC,X
+.C:85d2  60          RTS

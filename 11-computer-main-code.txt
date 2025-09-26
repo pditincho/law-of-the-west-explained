@@ -1,0 +1,5861 @@
+;Common lines used globally
+;01: OH, MY GOD! THE SHERIFF'S BEEN SHOT!
+;02: HE'S JUST LYING THERE. HE AIN'T MOVING.
+;03: QUICK! SOMEONE GET THE DOCTOR!
+
+;04: THE DOC'S NOT IN TOWN.NOTHING WE CAN DO!
+;05: STAND BACK,FOLKS,LET THE DOCTOR THROUGH!
+;06: STAND BACK,FOLKS,LET THE DOCTOR THROUGH!
+;07: STAND BACK,FOLKS,LET THE DOCTOR THROUGH!
+
+;08: HMMM. LET'S SEE HOW BADLY HE'S HURT.
+;09: YOU'LL BE OK. IT'S ONLY A FLESH WOUND.
+;10: HERE, TAKE A SWIG OF THIS.
+;11: IT'LL PUT YOU BACK ON YOUR FEET.
+
+;12: OH, IT'S THE TINHORN SHERIFF, IS IT?
+;13: WHY DIDN'T YOU TELL ME?
+;14: I WOULDN'T HAVE WASTED THE TIME TO COME!
+;15: LOOKS LIKE HE'S A GONER, ANYWAY.
+
+;16: HIC!  WHERE'SH MY BAG?  HIC!
+;17: ANYBODY GOT A DRINK?  HIC!
+;18: I THINK I'LL JUST ...
+;19: HE PASSED OUT.THE SHERRIF'S A GONER,NOW!
+
+;20: PLEASE TURN DISK OVER AND PRESS BUTTON.
+;21: A FEW SECONDS LATER...
+;22: CONGRATULATIONS, YOU MADE IT TO SUNSET!
+;23: SORRY, PARDNER, YOU DIDN'T MAKE IT!
+;24: YOUR FINAL SCORE IS
+;25:
+;26: PUT THAT GUN AWAY, MISTER!
+;27: HEY! AREN'T YOU A LITTLE TRIGGER HAPPY?
+;28: LATER THAT DAY...
+
+processor_port_register = $01
+saved_irq_vector = $2b
+gun_holstered_timer = $2d
+selected_line_display_timer = $2f		;A timer used to display the sheriff's selected dialogue line
+character_line_display_timer = $30		;A timer used to display the character's dialogue line
+selected_phrase_tiers = $34
+current_tier = $38
+joystick_direction_state = $39
+joystick_button_state = $3a
+crosshair_sprite_x_lo = $3b
+crosshair_sprite_x_hi = $3c
+crosshair_sprite_y = $3d
+gun_draw_crosshair_counter = $4c
+gun_holster_counter = $4d
+phrase_index = $4f
+character_state = $5f
+character_stance = $61 ;6, 7, 9, C = shooting stances							
+character_animation_state = $62
+character_animation_delay = $63
+sprite_collisions = $64
+sprite_1_x_lo = $6a
+sprite_2_x_lo = $6c
+sprite_3_x_lo = $6e
+sprite_4_x_lo = $70
+sprite_5_x_lo = $72
+sprite_6_x_lo = $74
+sprite_7_x_lo = $76
+sprites_x_hi_combined = $78
+doctor_state = $7b	; 0 = out of town, 1 = drunk, 2 = hostile, 3 = friendly
+random_a = $7c
+random_b = $7d
+authority_maintained = $7e
+crooks_captured = $7f
+romance_progress = $80
+lawful_kills = $81
+times_injured = $82
+unlawful_kills = $83
+crimes_committed = $84
+scene_number = $87
+interactions_completed = $8f
+irq_vector = $0314		;Vector in KERNAL/BASIC space
+line1_text_data = $0747
+line2_text_data = $076f
+line3_text_data = $0797
+line0_text_data = $07BF
+score_screen_position_1 = $07ad
+score_screen_position_2 = $07ae
+score_screen_position_3 = $07af
+score_screen_position_4 = $07b0
+restart_phrase_screen_position = $07c0
+random_score_nibbles = $534e
+phrase_pointers = $5B4C
+crosshair_delta_x_lo_for_direction = $88f9
+crosshair_delta_x_hi_for_direction = $8905
+crosshair_delta_y_for_direction = $8915
+doctor_state_for_dialogue = $8d0f
+romance_progress_for_dialogue = $8d17
+authority_progress_for_dialogue = $8d1f
+
+; Sprite 1 is used for the crosshair and the blood injury when shot
+; Sprite 2 is used for the crosshair center
+; Sprites 3-6 are used for the character interacting with the sheriff
+; Sprite 7 is used for the people walking in the background
+; Sprite 1 data is at $7800
+; Sprite 2 data is at $7840
+; Sprites 3-6 data are at $7f00, $7f40, $7f80, $7fc0
+; Sprite 7 data is at $78c0
+bkg_person_sprite_data = $78c0 
+processor_port_register_copy = $7d85
+character_colors = $7ECE
+;===========================================================
+; VIC-II registers
+;===========================================================
+sprite0_x_lo_register = $d000
+sprite0_y_register = $d001
+sprite1_x_lo_register = $d002
+sprite1_y_register = $d003
+sprite2_x_lo_register = $d004
+sprite2_y_register = $d005
+sprite3_x_lo_register = $d006
+sprite3_y_register = $d007
+sprite4_x_lo_register = $d008
+sprite4_y_register = $d009
+sprite5_x_lo_register = $d00a
+sprite5_y_register = $d00b
+sprite6_x_lo_register = $d00c
+sprite6_y_register = $d00d
+sprite7_x_lo_register = $d00e
+sprite7_y_register = $d00f
+sprites_x_hi_combined_reg = $d010
+vic_screen_control_register_1 = $d011
+vic_raster_compare_register = $d012
+vic_sprite_enable_register = $d015
+vic_screen_control2_reg = $d016
+vic_memory_control_register = $d018
+vic_irq_flag_register = $d019
+vic_irq_mask_register = $d01a
+vic_sprite_priority_reg = $d01b
+vic_sprite_hor_expansion_reg = $d01d
+vic_sprite_to_sprite_collision_reg = $d01e
+vic_border_color_register = $d020
+vic_bkg_color0_register = $d021
+vic_sprite_mcolor0_reg = $d025
+vic_sprite_mcolor1_reg = $d026
+vic_sprite0_color_reg = $d027
+vic_sprite1_color_reg = $d028
+vic_sprite2_color_reg = $d029
+vic_sprite3_color_reg = $d02a
+vic_sprite7_color_reg = $d02e
+
+;===========================================================
+; SID registers
+;===========================================================
+sid_voice1_freq_control_low_reg = $d400
+sid_voice1_freq_control_hi_reg = $d401
+sid_voice1_pulse_width_low_reg = $d402
+sid_voice1_pulse_width_hi_reg = $d403
+sid_voice1_control_reg = $d404
+sid_voice1_attack_decay_reg = $d405
+sid_voice1_sustain_release_reg = $d406
+sid_voice2_control_reg = $d40b
+sid_voice3_freq_control_low_reg = $d40e
+sid_voice3_freq_control_hi_reg = $d40f
+sid_voice3_control_reg = $d412
+sid_voice3_attack_decay_reg = $d413
+sid_voice3_sustain_release_reg = $d414
+sid_filter_cutoff_low_reg = $d415
+sid_filter_cutoff_hi_reg = $d416
+sid_filter_resonance_control_reg = $d417
+sid_volume_and_filter_select_reg = $d418
+
+
+;===========================================================
+; I/O CIA registers
+;===========================================================
+cia1_port_a_data_register = $dc00
+cia1_port_b_data_register = $dc01
+cia1_port_a_data_direction_reg = $dc02
+cia1_port_b_data_direction_reg = $dc03
+cia1_timer_b_hi_register = $dc07
+cia1_irq_status_register = $dc0d
+cia1_control_timer_a_reg = $dc0e
+cia1_control_timer_b_reg = $dc0f
+
+;CIA #2 Port A bits 0-1 control the base VIC-II address space (which is 16K long)
+; Bits		Address space
+;	00		C000-FFFF
+;	01		8000-BFFF
+;	10		4000-7FFF
+;	11		0000-3FFF
+cia2_port_a_data_register = $dd00
+cia2_port_b_data_register = $dd01
+cia2_port_a_data_direction_reg = $dd02
+cia2_port_b_data_direction_reg = $dd03
+cia2_irq_status_register = $dd0d
+
+
+;===========================================================
+; This routine sets up the static background used in the scene.
+;
+; This excludes the sheriff itself, except for the bandage area
+; and the hand/gun (which are dynamic and taken care of elsewhere).
+;===========================================================
+counter = $16
+
+setup_background:
+.C:545e  A9 3F       LDA #$3F
+.C:5460  85 40       STA $40
+.C:5462  A5 4A       LDA $4A
+.C:5464  29 03       AND #$03
+.C:5466  0A          ASL A
+.C:5467  AA          TAX
+.C:5468  BD 7E 55    LDA $557E,X
+.C:546b  85 12       STA $12
+.C:546d  BD 7F 55    LDA $557F,X
+.C:5470  85 13       STA $13
+.C:5472  A5 12       LDA $12
+.C:5474  18          CLC
+.C:5475  69 DC       ADC #$DC
+.C:5477  85 0E       STA $0E
+.C:5479  A5 13       LDA $13
+.C:547b  69 01       ADC #$01
+.C:547d  85 0F       STA $0F
+;Set pointer to $5C08
+.C:547f  A9 08       LDA #$08
+.C:5481  85 14       STA $14
+.C:5483  A9 5C       LDA #$5C
+.C:5485  85 15       STA $15
+;Set pointer to $6040
+.C:5487  A9 40       LDA #$40
+.C:5489  85 10       STA $10
+.C:548b  A9 60       LDA #$60
+.C:548d  85 11       STA $11
+;---------------------------------------
+.C:548f  A2 07       LDX #$07
+copy_loop_1:
+.C:5491  A9 1F       LDA #$1F
+.C:5493  85 16       STA counter
+copy_loop_2:
+.C:5495  A0 07       LDY #$07
+copy_loop_3:
+.C:5497  B1 0E       LDA ($0E),Y
+.C:5499  91 10       STA ($10),Y
+.C:549b  88          DEY
+.C:549c  10 F9       BPL copy_loop_3
+.C:549e  A0 00       LDY #$00
+.C:54a0  B1 12       LDA ($12),Y
+.C:54a2  91 14       STA ($14),Y
+.C:54a4  A5 0E       LDA $0E
+.C:54a6  18          CLC
+.C:54a7  69 08       ADC #$08
+.C:54a9  85 0E       STA $0E
+.C:54ab  A5 0F       LDA $0F
+.C:54ad  69 00       ADC #$00
+.C:54af  85 0F       STA $0F
+.C:54b1  A5 10       LDA $10
+.C:54b3  18          CLC
+.C:54b4  69 08       ADC #$08
+.C:54b6  85 10       STA $10
+.C:54b8  A5 11       LDA $11
+.C:54ba  69 00       ADC #$00
+.C:54bc  85 11       STA $11
+.C:54be  A5 12       LDA $12
+.C:54c0  18          CLC
+.C:54c1  69 01       ADC #$01
+.C:54c3  85 12       STA $12
+.C:54c5  A5 13       LDA $13
+.C:54c7  69 00       ADC #$00
+.C:54c9  85 13       STA $13
+.C:54cb  A5 14       LDA $14
+.C:54cd  18          CLC
+.C:54ce  69 01       ADC #$01
+.C:54d0  85 14       STA $14
+.C:54d2  A5 15       LDA $15
+.C:54d4  69 00       ADC #$00
+.C:54d6  85 15       STA $15
+.C:54d8  C6 16       DEC counter
+.C:54da  10 B9       BPL copy_loop_2
+;---------------------------------------
+.C:54dc  A5 10       LDA $10
+.C:54de  18          CLC
+.C:54df  69 40       ADC #$40
+.C:54e1  85 10       STA $10
+.C:54e3  A5 11       LDA $11
+.C:54e5  69 00       ADC #$00
+.C:54e7  85 11       STA $11
+.C:54e9  A5 14       LDA $14
+.C:54eb  18          CLC
+.C:54ec  69 08       ADC #$08
+.C:54ee  85 14       STA $14
+.C:54f0  A5 15       LDA $15
+.C:54f2  69 00       ADC #$00
+.C:54f4  85 15       STA $15
+.C:54f6  CA          DEX
+.C:54f7  10 98       BPL copy_loop_1
+;---------------------------------------
+.C:54f9  A5 10       LDA $10
+.C:54fb  18          CLC
+.C:54fc  69 60       ADC #$60
+.C:54fe  85 10       STA $10
+.C:5500  A5 11       LDA $11
+.C:5502  69 00       ADC #$00
+.C:5504  85 11       STA $11
+.C:5506  A5 14       LDA $14
+.C:5508  18          CLC
+.C:5509  69 0C       ADC #$0C
+.C:550b  85 14       STA $14
+.C:550d  A5 15       LDA $15
+.C:550f  69 00       ADC #$00
+.C:5511  85 15       STA $15
+;---------------------------------------
+.C:5513  A2 0A       LDX #$0A
+copy_loop_4:
+.C:5515  A9 13       LDA #$13
+.C:5517  85 16       STA counter
+copy_loop_5:
+.C:5519  A0 07       LDY #$07
+copy_loop_6:
+.C:551b  B1 0E       LDA ($0E),Y
+.C:551d  91 10       STA ($10),Y
+.C:551f  88          DEY
+.C:5520  10 F9       BPL copy_loop_6
+.C:5522  A0 00       LDY #$00
+.C:5524  B1 12       LDA ($12),Y
+.C:5526  91 14       STA ($14),Y
+.C:5528  A5 0E       LDA $0E
+.C:552a  18          CLC
+.C:552b  69 08       ADC #$08
+.C:552d  85 0E       STA $0E
+.C:552f  A5 0F       LDA $0F
+.C:5531  69 00       ADC #$00
+.C:5533  85 0F       STA $0F
+.C:5535  A5 10       LDA $10
+.C:5537  18          CLC
+.C:5538  69 08       ADC #$08
+.C:553a  85 10       STA $10
+.C:553c  A5 11       LDA $11
+.C:553e  69 00       ADC #$00
+.C:5540  85 11       STA $11
+.C:5542  A5 12       LDA $12
+.C:5544  18          CLC
+.C:5545  69 01       ADC #$01
+.C:5547  85 12       STA $12
+.C:5549  A5 13       LDA $13
+.C:554b  69 00       ADC #$00
+.C:554d  85 13       STA $13
+.C:554f  A5 14       LDA $14
+.C:5551  18          CLC
+.C:5552  69 01       ADC #$01
+.C:5554  85 14       STA $14
+.C:5556  A5 15       LDA $15
+.C:5558  69 00       ADC #$00
+.C:555a  85 15       STA $15
+.C:555c  C6 16       DEC counter
+.C:555e  10 B9       BPL copy_loop_5
+.C:5560  A5 10       LDA $10
+.C:5562  18          CLC
+.C:5563  69 A0       ADC #$A0
+.C:5565  85 10       STA $10
+.C:5567  A5 11       LDA $11
+.C:5569  69 00       ADC #$00
+.C:556b  85 11       STA $11
+.C:556d  A5 14       LDA $14
+.C:556f  18          CLC
+.C:5570  69 14       ADC #$14
+.C:5572  85 14       STA $14
+.C:5574  A5 15       LDA $15
+.C:5576  69 00       ADC #$00
+.C:5578  85 15       STA $15
+.C:557a  CA          DEX
+.C:557b  10 98       BPL copy_loop_4
+.C:557d  60          RTS
+;===========================================================
+temp = $16
+
+player_shot:
+.C:5586  A9 FF       LDA #$FF
+.C:5588  85 66       STA $66
+.C:558a  20 5A 82    JSR clear_text_area
+.C:558d  A9 00       LDA #$00
+.C:558f  85 33       STA $33
+.C:5591  85 3C       STA crosshair_sprite_x_hi
+;Use sprite 1 for the blood injury
+.C:5593  AD 10 D0    LDA sprites_x_hi_combined_reg
+.C:5596  29 FD       AND #$FD
+.C:5598  8D 10 D0    STA sprites_x_hi_combined_reg
+.C:559b  A9 40       LDA #$40
+.C:559d  85 3B       STA crosshair_sprite_x_lo
+.C:559f  8D 02 D0    STA sprite1_x_lo_register
+.C:55a2  A9 60       LDA #$60
+.C:55a4  8D 03 D0    STA sprite1_y_register
+.C:55a7  A9 E2       LDA #$E2
+.C:55a9  8D F9 5F    STA $5FF9
+.C:55ac  A9 02       LDA #$02
+.C:55ae  8D 28 D0    STA vic_sprite1_color_reg
+.C:55b1  AD 15 D0    LDA vic_sprite_enable_register
+.C:55b4  29 F9       AND #$F9
+.C:55b6  09 02       ORA #$02
+.C:55b8  8D 15 D0    STA vic_sprite_enable_register
+;-----------------------------------
+.C:55bb  A9 02       LDA #$02
+.C:55bd  20 8F 5A    JSR delay
+;-----------------------------------
+.C:55c0  A9 09       LDA #$09
+.C:55c2  85 86       STA $86
+.C:55c4  A9 00       LDA #$00
+.C:55c6  85 3A       STA joystick_button_state
+.C:55c8  85 39       STA joystick_direction_state
+.C:55ca  8D 50 7D    STA $7D50
+.C:55cd  85 79       STA $79
+;Set character state to #00 (still)
+.C:55cf  20 1C 9E    JSR set_character_state
+.C:55d2  85 5B       STA $5B
+;-----------------------------------
+.C:55d4  A9 05       LDA #$05
+.C:55d6  20 8F 5A    JSR delay
+;-----------------------------------
+; Do the gradual screen dissolve effect by cycling through every 
+; background tile and randomly setting it to black.
+;-----------------------------------
+.C:55d9  A2 08       LDX #$08
+.C:55db  86 17       STX $17
+:
+.C:55dd  A9 08       LDA #$08
+.C:55df  85 12       STA $12
+.C:55e1  A9 5C       LDA #$5C
+.C:55e3  85 13       STA $13
+.C:55e5  A9 08       LDA #$08
+.C:55e7  85 14       STA $14
+.C:55e9  A9 5C       LDA #$5C
+.C:55eb  85 15       STA $15
+.C:55ed  A2 07       LDX #$07
+;-----------------------------------
+:
+.C:55ef  A9 1F       LDA #$1F
+.C:55f1  85 16       STA temp
+:
+.C:55f3  A0 07       LDY #$07
+.C:55f5  A0 00       LDY #$00
+;Get a random number
+.C:55f7  20 2D 8A    JSR update_random_numbers
+;If the random number >= 0xF, copy the source tile value
+.C:55fa  A5 7C       LDA random_a
+.C:55fc  C9 0F       CMP #$0F
+.C:55fe  B0 04       BCS copy_tile_as_is
+;Else use #00 as the tile value (a black tile)
+.C:5600  A9 00       LDA #$00
+.C:5602  F0 02       BEQ write_tile
+copy_tile_as_is:
+.C:5604  B1 12       LDA ($12),Y
+write_tile:
+.C:5606  91 14       STA ($14),Y
+;-----------------------------------
+.C:5608  A5 12       LDA $12
+.C:560a  18          CLC
+.C:560b  69 01       ADC #$01
+.C:560d  85 12       STA $12
+.C:560f  A5 13       LDA $13
+.C:5611  69 00       ADC #$00
+.C:5613  85 13       STA $13
+;-----------------------------------
+.C:5615  A5 14       LDA $14
+.C:5617  18          CLC
+.C:5618  69 01       ADC #$01
+.C:561a  85 14       STA $14
+.C:561c  A5 15       LDA $15
+.C:561e  69 00       ADC #$00
+.C:5620  85 15       STA $15
+.C:5622  C6 16       DEC temp
+.C:5624  10 CD       BPL $55F3
+;-----------------------------------
+.C:5626  A5 12       LDA $12
+.C:5628  18          CLC
+.C:5629  69 08       ADC #$08
+.C:562b  85 12       STA $12
+.C:562d  A5 13       LDA $13
+.C:562f  69 00       ADC #$00
+.C:5631  85 13       STA $13
+;-----------------------------------
+.C:5633  A5 14       LDA $14
+.C:5635  18          CLC
+.C:5636  69 08       ADC #$08
+.C:5638  85 14       STA $14
+.C:563a  A5 15       LDA $15
+.C:563c  69 00       ADC #$00
+.C:563e  85 15       STA $15
+.C:5640  CA          DEX
+.C:5641  30 03       BMI $5646
+.C:5643  4C EF 55    JMP $55EF
+;-----------------------------------
+:
+.C:5646  A5 12       LDA $12
+.C:5648  18          CLC
+.C:5649  69 0C       ADC #$0C
+.C:564b  85 12       STA $12
+.C:564d  A5 13       LDA $13
+.C:564f  69 00       ADC #$00
+.C:5651  85 13       STA $13
+;-----------------------------------
+.C:5653  A5 14       LDA $14
+.C:5655  18          CLC
+.C:5656  69 0C       ADC #$0C
+.C:5658  85 14       STA $14
+.C:565a  A5 15       LDA $15
+.C:565c  69 00       ADC #$00
+.C:565e  85 15       STA $15
+;-----------------------------------
+.C:5660  A2 0A       LDX #$0A
+:
+.C:5662  A9 13       LDA #$13
+.C:5664  85 16       STA temp
+:
+.C:5666  A0 07       LDY #$07
+.C:5668  A0 00       LDY #$00
+.C:566a  20 2D 8A    JSR update_random_numbers
+.C:566d  A5 7C       LDA random_a
+.C:566f  C9 0F       CMP #$0F
+.C:5671  B0 04       BCS $5677
+.C:5673  A9 00       LDA #$00
+.C:5675  F0 02       BEQ $5679
+:
+.C:5677  B1 12       LDA ($12),Y
+:
+.C:5679  91 14       STA ($14),Y
+.C:567b  A5 12       LDA $12
+.C:567d  18          CLC
+.C:567e  69 01       ADC #$01
+.C:5680  85 12       STA $12
+.C:5682  A5 13       LDA $13
+.C:5684  69 00       ADC #$00
+.C:5686  85 13       STA $13
+.C:5688  A5 14       LDA $14
+.C:568a  18          CLC
+.C:568b  69 01       ADC #$01
+.C:568d  85 14       STA $14
+.C:568f  A5 15       LDA $15
+.C:5691  69 00       ADC #$00
+.C:5693  85 15       STA $15
+.C:5695  C6 16       DEC temp
+.C:5697  10 CD       BPL $5666
+.C:5699  A5 12       LDA $12
+.C:569b  18          CLC
+.C:569c  69 14       ADC #$14
+.C:569e  85 12       STA $12
+.C:56a0  A5 13       LDA $13
+.C:56a2  69 00       ADC #$00
+.C:56a4  85 13       STA $13
+.C:56a6  A5 14       LDA $14
+.C:56a8  18          CLC
+.C:56a9  69 14       ADC #$14
+.C:56ab  85 14       STA $14
+.C:56ad  A5 15       LDA $15
+.C:56af  69 00       ADC #$00
+.C:56b1  85 15       STA $15
+.C:56b3  CA          DEX
+.C:56b4  30 03       BMI $56B9
+.C:56b6  4C 62 56    JMP $5662
+:
+.C:56b9  A2 20       LDX #$20
+:
+.C:56bb  A9 00       LDA #$00
+:
+.C:56bd  18          CLC
+.C:56be  69 01       ADC #$01
+.C:56c0  90 FB       BCC $56BD
+.C:56c2  CA          DEX
+.C:56c3  D0 F6       BNE $56BB
+.C:56c5  C6 17       DEC $17
+.C:56c7  F0 03       BEQ $56CC
+.C:56c9  4C DD 55    JMP $55DD
+;-----------------------------------
+:
+.C:56cc  A9 FF       LDA #$FF
+.C:56ce  85 7A       STA $7A
+.C:56d0  A5 4C       LDA gun_draw_crosshair_counter
+.C:56d2  F0 04       BEQ $56D8
+.C:56d4  A9 04       LDA #$04
+.C:56d6  85 4D       STA gun_holster_counter
+;-----------------------------------
+.C:56d8  A9 A0       LDA #$A0
+.C:56da  85 3B       STA crosshair_sprite_x_lo
+.C:56dc  8D 02 D0    STA sprite1_x_lo_register
+.C:56df  8D 04 D0    STA sprite2_x_lo_register
+.C:56e2  A9 00       LDA #$00
+.C:56e4  85 3C       STA crosshair_sprite_x_hi
+.C:56e6  A9 B3       LDA #$B3
+.C:56e8  85 3D       STA crosshair_sprite_y
+.C:56ea  8D 03 D0    STA sprite1_y_register
+.C:56ed  8D 05 D0    STA sprite2_y_register
+.C:56f0  AD 15 D0    LDA vic_sprite_enable_register
+.C:56f3  29 F9       AND #$F9
+.C:56f5  8D 15 D0    STA vic_sprite_enable_register
+.C:56f8  A9 00       LDA #$00
+.C:56fa  85 31       STA $31
+.C:56fc  85 32       STA $32
+.C:56fe  85 3A       STA joystick_button_state
+.C:5700  85 39       STA joystick_direction_state
+.C:5702  85 4C       STA gun_draw_crosshair_counter
+.C:5704  85 4E       STA $4E
+.C:5706  8D 50 7D    STA $7D50
+.C:5709  A9 02       LDA #$02
+.C:570b  85 54       STA $54
+.C:570d  A9 00       LDA #$00
+.C:570f  85 3C       STA crosshair_sprite_x_hi
+.C:5711  85 6E       STA sprite_3_x_lo
+.C:5713  85 70       STA sprite_4_x_lo
+.C:5715  85 72       STA sprite_5_x_lo
+.C:5717  85 74       STA sprite_6_x_lo
+.C:5719  8D 06 D0    STA sprite3_x_lo_register
+.C:571c  8D 08 D0    STA sprite4_x_lo_register
+.C:571f  8D 0A D0    STA sprite5_x_lo_register
+.C:5722  8D 0C D0    STA sprite6_x_lo_register
+.C:5725  85 39       STA joystick_direction_state
+.C:5727  8D 15 D0    STA vic_sprite_enable_register
+.C:572a  A5 78       LDA sprites_x_hi_combined
+.C:572c  29 81       AND #$81
+.C:572e  85 78       STA sprites_x_hi_combined
+.C:5730  8D 10 D0    STA sprites_x_hi_combined_reg
+.C:5733  E6 82       INC times_injured
+;-----------------------------------
+;Has the player been injured 3 times or more?
+.C:5735  A5 82       LDA times_injured
+.C:5737  C9 03       CMP #$03
+.C:5739  90 04       BCC do_doctor_call_dialogue
+;If so, set doctor_state to #01 (drunk)
+.C:573b  A9 01       LDA #$01
+.C:573d  85 7B       STA doctor_state
+do_doctor_call_dialogue:
+.C:573f  A2 00       LDX #$00
+.C:5741  A9 00       LDA #$00					;"Oh my god, the sheriff's been shot!"
+.C:5743  20 B1 5A    JSR print_common_phrase
+.C:5746  A9 01       LDA #$01					;"He's just lying there. He ain't moving"
+.C:5748  20 B1 5A    JSR print_common_phrase
+.C:574b  A9 02       LDA #$02					;"Quick! Someone get the doctor"
+.C:574d  20 B1 5A    JSR print_common_phrase
+;-----------------------------------
+;Select doctor phrase (coming through vs. not in town) based on doctor_state
+.C:5750  A5 7B       LDA doctor_state
+.C:5752  18          CLC
+.C:5753  69 03       ADC #$03
+.C:5755  A2 00       LDX #$00
+.C:5757  20 B1 5A    JSR print_common_phrase
+;-----------------------------------
+;Doctor is out of town? (#00 + 3 = 3)
+.C:575a  C9 03       CMP #$03
+.C:575c  F0 22       BEQ skip_to_game_over
+;Doctor is drunk? (#01 + 3 = 4)
+.C:575e  A2 0F       LDX #$0F		;"anybody got a drink?", etc.
+.C:5760  C9 04       CMP #$04
+.C:5762  F0 08       BEQ print_doctor_responses
+;Doctor is hostile? (#02 + 3 = 5)
+.C:5764  A2 0B       LDX #$0B		;"wouldn't have wasted the time to come", etc.
+.C:5766  C9 05       CMP #$05
+.C:5768  F0 02       BEQ print_doctor_responses
+;Doctor is friendly (#03 + 3 = 6)
+.C:576a  A2 07       LDX #$07		;"only a flesh wound", etc.
+;-----------------------------------
+print_doctor_responses:
+.C:576c  8A          TXA
+;Cycle through the next 3 phrases of this set of responses
+.C:576d  A0 03       LDY #$03
+print_loop:
+.C:576f  A2 00       LDX #$00
+.C:5771  20 B1 5A    JSR print_common_phrase
+;Increment .A to reference the next phrase and loop
+.C:5774  18          CLC
+.C:5775  69 01       ADC #$01
+.C:5777  88          DEY
+.C:5778  10 F5       BPL print_loop
+;-----------------------------------
+;Is the doctor friendly? (#03)
+.C:577a  A5 7B       LDA doctor_state
+.C:577c  C9 03       CMP #$03
+;If so, get healed by the doctor
+.C:577e  F0 03       BEQ healed_by_doctor
+;Otherwise, it's game over
+skip_to_game_over:
+.C:5780  4C B5 57    JMP game_over
+;-----------------------------------
+healed_by_doctor:
+.C:5783  A9 00       LDA #$00
+.C:5785  85 67       STA $67
+.C:5787  20 5E 54    JSR setup_background
+.C:578a  A9 11       LDA #$11
+.C:578c  8D F4 5C    STA $5CF4
+.C:578f  8D F6 5C    STA $5CF6
+.C:5792  8D F7 5C    STA $5CF7
+.C:5795  A9 21       LDA #$21
+.C:5797  8D F5 5C    STA $5CF5
+.C:579a  A9 00       LDA #$00
+.C:579c  85 7A       STA $7A
+.C:579e  85 66       STA $66
+.C:57a0  85 63       STA character_animation_delay
+.C:57a2  A9 02       LDA #$02
+.C:57a4  85 62       STA character_animation_state
+.C:57a6  20 6F 9B    JSR finish_scene
+.C:57a9  A9 00       LDA #$00
+.C:57ab  85 63       STA character_animation_delay
+.C:57ad  20 6F 9B    JSR finish_scene
+.C:57b0  A9 00       LDA #$00
+.C:57b2  85 66       STA $66
+.C:57b4  60          RTS
+;-----------------------------------
+game_over:
+.C:57b5  A9 FF       LDA #$FF
+.C:57b7  85 85       STA $85
+.C:57b9  A9 FF       LDA #$FF
+.C:57bb  85 66       STA $66
+.C:57bd  A9 FF       LDA #$FF
+.C:57bf  85 3D       STA crosshair_sprite_y
+;Hide crosshair sprites
+.C:57c1  8D 03 D0    STA sprite1_y_register
+.C:57c4  8D 05 D0    STA sprite2_y_register
+.C:57c7  A9 00       LDA #$00
+.C:57c9  85 31       STA $31
+.C:57cb  85 32       STA $32
+.C:57cd  85 3A       STA joystick_button_state
+.C:57cf  A9 00       LDA #$00
+.C:57d1  85 0E       STA $0E
+.C:57d3  A9 5C       LDA #$5C
+.C:57d5  85 0F       STA $0F
+.C:57d7  A0 00       LDY #$00
+.C:57d9  A9 99       LDA #$99
+.C:57db  91 0E       STA ($0E),Y
+.C:57dd  A5 0E       LDA $0E
+.C:57df  18          CLC
+.C:57e0  69 01       ADC #$01
+.C:57e2  85 0E       STA $0E
+.C:57e4  A5 0F       LDA $0F
+.C:57e6  69 00       ADC #$00
+.C:57e8  85 0F       STA $0F
+.C:57ea  A5 0E       LDA $0E
+.C:57ec  C9 F8       CMP #$F8
+.C:57ee  D0 E9       BNE $57D9
+.C:57f0  A5 0F       LDA $0F
+.C:57f2  C9 5F       CMP #$5F
+.C:57f4  D0 E3       BNE $57D9
+.C:57f6  A9 00       LDA #$00
+.C:57f8  85 7A       STA $7A
+;"Please turn disk over"
+.C:57fa  A0 15       LDY #$15
+.C:57fc  A5 87       LDA scene_number
+.C:57fe  C9 0B       CMP #$0B
+.C:5800  F0 02       BEQ $5804
+;"A few seconds later..."
+.C:5802  A0 16       LDY #$16
+.C:5804  98          TYA
+.C:5805  A2 03       LDX #$03
+.C:5807  20 B1 5A    JSR print_common_phrase
+.C:580a  E6 87       INC scene_number
+.C:580c  A6 87       LDX scene_number
+.C:580e  E0 0D       CPX #$0D
+.C:5810  D0 02       BNE $5814
+.C:5812  A2 0C       LDX #$0C
+.C:5814  86 87       STX scene_number
+;-----------------------------------
+;authority_maintained = (authority_maintained * 2) / 11
+.C:5816  A5 7E       LDA authority_maintained
+.C:5818  0A          ASL A
+.C:5819  A0 FF       LDY #$FF
+subtraction_loop:
+.C:581b  C8          INY
+.C:581c  38          SEC
+.C:581d  E9 0B       SBC #$0B
+.C:581f  B0 FA       BCS subtraction_loop
+.C:5821  84 7E       STY authority_maintained
+;-----------------------------------
+;Cap counters, used to calculate score, to a maximum value of #0C each
+.C:5823  A2 06       LDX #$06
+cap_counter:
+.C:5825  B5 7E       LDA authority_maintained,X
+.C:5827  C9 0D       CMP #$0D
+.C:5829  90 02       BCC $582D
+.C:582b  A9 0C       LDA #$0C
+.C:582d  95 7E       STA authority_maintained,X
+.C:582f  CA          DEX
+.C:5830  10 F3       BPL cap_counter
+;-----------------------------------
+; Display logos for each score metric
+.C:5832  A2 00       LDX #$00
+loop:
+.C:5834  20 2C 59    JSR copy_score_logos
+.C:5837  E8          INX
+.C:5838  E0 07       CPX #$07
+.C:583a  D0 F8       BNE loop
+;-----------------------------------
+;"Congratulations, you made it to sunset"
+.C:583c  A9 17       LDA #$17
+.C:583e  A2 04       LDX #$04
+.C:5840  20 B1 5A    JSR print_common_phrase
+score_low = $16
+score_hi = $17
+;-----------------------------------
+.C:5843  A0 00       LDY #$00
+.C:5845  84 16       STY score_low
+.C:5847  84 17       STY score_hi
+;.Y = authority_maintained + crooks_captured + romance_progress + lawful_kills - 
+; (times_injured + unlawful_kills + crimes_committed)
+.C:5849  A5 7E       LDA authority_maintained
+.C:584b  18          CLC
+.C:584c  65 7F       ADC crooks_captured
+.C:584e  65 80       ADC romance_progress
+.C:5850  65 81       ADC lawful_kills
+;After adding the positive numbers, start subtracting the negative ones
+;If at any point the running total is negative, skip to the next section
+.C:5852  38          SEC
+.C:5853  E5 82       SBC times_injured
+.C:5855  90 1F       BCC do_random_score_low
+.C:5857  38          SEC
+.C:5858  E5 83       SBC unlawful_kills
+.C:585a  90 1A       BCC do_random_score_low
+.C:585c  38          SEC
+.C:585d  E5 84       SBC crimes_committed
+.C:585f  90 15       BCC do_random_score_low
+.C:5861  A8          TAY
+.C:5862  F0 12       BEQ do_random_score_low
+;-----------------------------------
+; The score is positive, now multiply the running total (in .Y) by 285
+; This is done by successive aditions of 285 in decimal mode
+;-----------------------------------
+.C:5864  F8          SED
+decimal_addition:
+.C:5865  A5 16       LDA score_low
+.C:5867  18          CLC
+.C:5868  69 85       ADC #$85
+.C:586a  85 16       STA score_low
+.C:586c  A5 17       LDA score_hi
+.C:586e  69 02       ADC #$02
+.C:5870  85 17       STA score_hi
+.C:5872  88          DEY
+.C:5873  D0 F0       BNE decimal_addition
+.C:5875  D8          CLD
+;-----------------------------------
+;Get two random bytes and use them as indexes for nibbles
+;Which will get combined (OR'ed together) into score_low
+;-----------------------------------
+do_random_score_low:
+.C:5876  A5 7C       LDA random_a
+.C:5878  29 0F       AND #$0F
+.C:587a  A8          TAY
+.C:587b  B9 4E 53    LDA random_score_nibbles,Y
+.C:587e  0A          ASL A
+.C:587f  0A          ASL A
+.C:5880  0A          ASL A
+.C:5881  0A          ASL A
+.C:5882  85 16       STA score_low
+.C:5884  A5 7D       LDA random_b
+.C:5886  29 0F       AND #$0F
+.C:5888  A8          TAY
+.C:5889  B9 4E 53    LDA random_score_nibbles,Y
+.C:588c  05 16       ORA score_low
+.C:588e  85 16       STA score_low
+;---------------------------------------
+; Print score on screen
+;---------------------------------------
+;Low nibble of score_low
+.C:5890  A5 16       LDA score_low
+.C:5892  29 0F       AND #$0F
+.C:5894  09 30       ORA #$30
+.C:5896  8D B0 07    STA score_screen_position_4
+;---------------------------------------
+;Hi nibble of score_low 
+.C:5899  A5 16       LDA score_low
+.C:589b  4A          LSR A
+.C:589c  4A          LSR A
+.C:589d  4A          LSR A
+.C:589e  4A          LSR A
+.C:589f  09 30       ORA #$30
+.C:58a1  8D AF 07    STA score_screen_position_3
+;---------------------------------------
+;Low nibble of score_hi
+.C:58a4  A5 17       LDA score_hi
+.C:58a6  29 0F       AND #$0F
+.C:58a8  09 30       ORA #$30
+.C:58aa  8D AE 07    STA score_screen_position_2
+;---------------------------------------
+;Hi nibble of score_hi
+.C:58ad  A5 17       LDA score_hi
+.C:58af  4A          LSR A
+.C:58b0  4A          LSR A
+.C:58b1  4A          LSR A
+.C:58b2  4A          LSR A
+.C:58b3  09 30       ORA #$30
+.C:58b5  8D AD 07    STA score_screen_position_1
+.C:58b8  A9 01       LDA #$01
+.C:58ba  20 8F 5A    JSR delay
+.C:58bd  A9 0A       LDA #$0A
+.C:58bf  85 86       STA $86
+;---------------------------------------
+;Print restart text
+;---------------------------------------
+press_button_to_restart_ptr = $5312
+flip_disk_to_restart_ptr = $5329
+dest_ptr = $10
+.C:58c1  A9 07       LDA #<restart_phrase_screen_position
+.C:58c3  85 11       STA >dest_ptr
+.C:58c5  A9 C0       LDA #>restart_phrase_screen_position
+.C:58c7  85 10       STA <dest_ptr
+;Are we in scene number 5 or greater? If so, we have to flip the disk
+.C:58c9  A5 87       LDA scene_number			
+.C:58cb  C9 05       CMP #$05
+.C:58cd  B0 0F       BCS flip_disk_msg
+;---------------------------------------
+.C:58cf  A0 16       LDY #$16
+restart_string_loop:
+.C:58d1  B9 12 53    LDA press_button_to_restart_ptr,Y
+.C:58d4  91 10       STA (dest_ptr),Y
+.C:58d6  88          DEY
+.C:58d7  10 F8       BPL restart_string_loop
+.C:58d9  30 0D       BMI delay_1
+.C:58db  20 19 59    JSR enable_raster_irq_handling
+;---------------------------------------
+flip_disk_msg:
+.C:58de  A0 24       LDY #$24
+restart_string2_loop:
+.C:58e0  B9 29 53    LDA flip_disk_to_restart_ptr,Y
+.C:58e3  91 10       STA (dest_ptr),Y
+.C:58e5  88          DEY
+.C:58e6  10 F8       BPL restart_string2_loop
+delay_1:
+.C:58e8  A9 04       LDA #$04
+.C:58ea  20 8F 5A    JSR delay
+;---------------------------------------
+wait_on_controllers:
+.C:58ed  20 8E 8A    JSR scan_input_controllers
+.C:58f0  A5 3A       LDA joystick_button_state
+.C:58f2  F0 F9       BEQ wait_on_controllers
+.C:58f4  A9 00       LDA #$00
+.C:58f6  85 3A       STA joystick_button_state
+;Reset sprites (turn them all off)
+.C:58f8  8D 15 D0    STA vic_sprite_enable_register
+;Reset VIC-II IRQ Mask
+.C:58fb  8D 1A D0    STA vic_irq_mask_register
+;Reset volume and filter
+.C:58fe  8D 18 D4    STA sid_volume_and_filter_select_reg
+;Update video mode
+.C:5901  AD 11 D0    LDA vic_screen_control_register_1
+.C:5904  29 6F       AND #$6F
+.C:5906  8D 11 D0    STA vic_screen_control_register_1
+.C:5909  20 E8 9C    JSR restore_kernal_vectors
+;Set file to load as #0C (the main game file)
+.C:590c  A9 0C       LDA #$0C
+.C:590e  85 4B       STA filename_index
+.C:5910  20 AB 9D    JSR load_file_from_disk
+.C:5913  20 19 59    JSR enable_raster_irq_handling
+.C:5916  4C ED 58    JMP wait_on_controllers
+;======================================
+enable_raster_irq_handling:
+;Clear bit 7, set bit 4 - clear raster high line bit, set blank screen
+.C:5919  AD 11 D0    LDA vic_screen_control_register_1
+.C:591c  09 10       ORA #$10
+.C:591e  29 7F       AND #$7F
+.C:5920  8D 11 D0    STA vic_screen_control_register_1
+.C:5923  20 07 9D    JSR setup_raster_irq
+;Enable raster line interrupt
+.C:5926  A9 01       LDA #$01
+.C:5928  8D 1A D0    STA vic_irq_mask_register
+.C:592b  60          RTS
+;======================================
+; Argument:	.X score metric index to display
+;======================================
+index = $16
+metric_value = $17
+
+copy_score_logos:
+;Save registers
+.C:592c  48          PHA
+.C:592d  8A          TXA
+.C:592e  48          PHA
+.C:592f  98          TYA
+.C:5930  48          PHA
+.C:5931  78          SEI
+;Map in RAM and character ROM
+.C:5932  A5 01       LDA processor_port_register
+.C:5934  29 F8       AND #$F8
+.C:5936  85 01       STA processor_port_register
+.C:5938  86 16       STX index
+;Load score metric value
+.C:593a  B5 7E       LDA authority_maintained,X
+.C:593c  85 17       STA metric_value
+;Multiply score index by 2 to get index into .X
+.C:593e  A5 16       LDA index
+.C:5940  0A          ASL A
+.C:5941  AA          TAX
+;Setup source and destination pointers
+.C:5942  BD 57 5A    LDA $5A57,X
+.C:5945  85 0E       STA $0E
+.C:5947  BD 58 5A    LDA $5A58,X
+.C:594a  85 0F       STA $0F
+.C:594c  BD 65 5A    LDA $5A65,X
+.C:594f  85 12       STA $12
+.C:5951  BD 66 5A    LDA $5A66,X
+.C:5954  85 13       STA $13
+.C:5956  BD 73 5A    LDA $5A73,X
+.C:5959  85 10       STA $10
+.C:595b  BD 74 5A    LDA $5A74,X
+.C:595e  85 11       STA $11
+.C:5960  BD 81 5A    LDA $5A81,X
+.C:5963  85 14       STA $14
+.C:5965  BD 82 5A    LDA $5A82,X
+.C:5968  85 15       STA $15
+;Is the metric value zero? If so, exit
+check_metric_value:
+.C:596a  A6 17       LDX metric_value
+.C:596c  D0 03       BNE $5971
+.C:596e  4C 48 5A    JMP exit
+.C:5971  A0 17       LDY #$17
+.C:5973  B1 0E       LDA ($0E),Y
+.C:5975  91 10       STA ($10),Y
+.C:5977  88          DEY
+.C:5978  10 F9       BPL $5973
+.C:597a  A0 02       LDY #$02
+.C:597c  B1 12       LDA ($12),Y
+.C:597e  91 14       STA ($14),Y
+.C:5980  88          DEY
+.C:5981  10 F9       BPL $597C
+.C:5983  A5 0E       LDA $0E
+.C:5985  18          CLC
+.C:5986  69 A8       ADC #$A8
+.C:5988  85 0E       STA $0E
+.C:598a  A5 0F       LDA $0F
+.C:598c  69 00       ADC #$00
+.C:598e  85 0F       STA $0F
+.C:5990  A5 10       LDA $10
+.C:5992  18          CLC
+.C:5993  69 40       ADC #$40
+.C:5995  85 10       STA $10
+.C:5997  A5 11       LDA $11
+.C:5999  69 01       ADC #$01
+.C:599b  85 11       STA $11
+.C:599d  A5 12       LDA $12
+.C:599f  18          CLC
+.C:59a0  69 15       ADC #$15
+.C:59a2  85 12       STA $12
+.C:59a4  A5 13       LDA $13
+.C:59a6  69 00       ADC #$00
+.C:59a8  85 13       STA $13
+.C:59aa  A5 14       LDA $14
+.C:59ac  18          CLC
+.C:59ad  69 28       ADC #$28
+.C:59af  85 14       STA $14
+.C:59b1  A5 15       LDA $15
+.C:59b3  69 00       ADC #$00
+.C:59b5  85 15       STA $15
+.C:59b7  A0 17       LDY #$17
+.C:59b9  B1 0E       LDA ($0E),Y
+.C:59bb  91 10       STA ($10),Y
+.C:59bd  88          DEY
+.C:59be  10 F9       BPL $59B9
+.C:59c0  A0 02       LDY #$02
+.C:59c2  B1 12       LDA ($12),Y
+.C:59c4  91 14       STA ($14),Y
+.C:59c6  88          DEY
+.C:59c7  10 F9       BPL $59C2
+.C:59c9  A5 0E       LDA $0E
+.C:59cb  18          CLC
+.C:59cc  69 A8       ADC #$A8
+.C:59ce  85 0E       STA $0E
+.C:59d0  A5 0F       LDA $0F
+.C:59d2  69 00       ADC #$00
+.C:59d4  85 0F       STA $0F
+.C:59d6  A5 10       LDA $10
+.C:59d8  18          CLC
+.C:59d9  69 40       ADC #$40
+.C:59db  85 10       STA $10
+.C:59dd  A5 11       LDA $11
+.C:59df  69 01       ADC #$01
+.C:59e1  85 11       STA $11
+.C:59e3  A5 12       LDA $12
+.C:59e5  18          CLC
+.C:59e6  69 15       ADC #$15
+.C:59e8  85 12       STA $12
+.C:59ea  A5 13       LDA $13
+.C:59ec  69 00       ADC #$00
+.C:59ee  85 13       STA $13
+.C:59f0  A5 14       LDA $14
+.C:59f2  18          CLC
+.C:59f3  69 28       ADC #$28
+.C:59f5  85 14       STA $14
+.C:59f7  A5 15       LDA $15
+.C:59f9  69 00       ADC #$00
+.C:59fb  85 15       STA $15
+.C:59fd  A0 17       LDY #$17
+.C:59ff  B1 0E       LDA ($0E),Y
+.C:5a01  91 10       STA ($10),Y
+.C:5a03  88          DEY
+.C:5a04  10 F9       BPL $59FF
+.C:5a06  A0 02       LDY #$02
+.C:5a08  B1 12       LDA ($12),Y
+.C:5a0a  91 14       STA ($14),Y
+.C:5a0c  88          DEY
+.C:5a0d  10 F9       BPL $5A08
+.C:5a0f  A5 0E       LDA $0E
+.C:5a11  38          SEC
+.C:5a12  E9 50       SBC #$50
+.C:5a14  85 0E       STA $0E
+.C:5a16  A5 0F       LDA $0F
+.C:5a18  E9 01       SBC #$01
+.C:5a1a  85 0F       STA $0F
+.C:5a1c  A5 10       LDA $10
+.C:5a1e  38          SEC
+.C:5a1f  E9 68       SBC #$68
+.C:5a21  85 10       STA $10
+.C:5a23  A5 11       LDA $11
+.C:5a25  E9 02       SBC #$02
+.C:5a27  85 11       STA $11
+.C:5a29  A5 12       LDA $12
+.C:5a2b  38          SEC
+.C:5a2c  E9 2A       SBC #$2A
+.C:5a2e  85 12       STA $12
+.C:5a30  A5 13       LDA $13
+.C:5a32  E9 00       SBC #$00
+.C:5a34  85 13       STA $13
+.C:5a36  A5 14       LDA $14
+.C:5a38  38          SEC
+.C:5a39  E9 4D       SBC #$4D
+.C:5a3b  85 14       STA $14
+.C:5a3d  A5 15       LDA $15
+.C:5a3f  E9 00       SBC #$00
+.C:5a41  85 15       STA $15
+.C:5a43  C6 17       DEC metric_value
+.C:5a45  4C 6A 59    JMP check_metric_value
+exit:
+;Map in ROMs and I/O again
+.C:5a48  A5 01       LDA processor_port_register
+.C:5a4a  29 F8       AND #$F8
+.C:5a4c  09 06       ORA #$06
+.C:5a4e  85 01       STA processor_port_register
+;Re-enable interrupts, restore registers and exit
+.C:5a50  58          CLI
+.C:5a51  68          PLA
+.C:5a52  A8          TAY
+.C:5a53  68          PLA
+.C:5a54  AA          TAX
+.C:5a55  68          PLA
+.C:5a56  60          RTS
+;======================================
+.C:5a8a  5E 82 5E    LSR $5E82,X
+.C:5a8d  D2          JAM
+.C:5a8e  5E 85 17    LSR $1785,X
+.C:5a91  48          PHA
+.C:5a92  8A          TXA
+.C:5a93  48          PHA
+.C:5a94  98          TYA
+.C:5a95  48          PHA
+.C:5a96  A0 01       LDY #$01
+.C:5a98  A2 00       LDX #$00
+.C:5a9a  A9 00       LDA #$00
+.C:5a9c  18          CLC
+.C:5a9d  69 01       ADC #$01
+.C:5a9f  90 FB       BCC $5A9C
+.C:5aa1  CA          DEX
+.C:5aa2  D0 F6       BNE $5A9A
+.C:5aa4  88          DEY
+.C:5aa5  D0 F1       BNE $5A98
+.C:5aa7  C6 17       DEC $17
+.C:5aa9  10 EB       BPL $5A96
+.C:5aab  68          PLA
+.C:5aac  A8          TAY
+.C:5aad  68          PLA
+.C:5aae  AA          TAX
+.C:5aaf  68          PLA
+.C:5ab0  60          RTS
+;======================================
+common_phrase_pointers = $5b14
+temp = $17
+
+print_common_phrase:
+.C:5ab1  85 17       STA temp
+;Save registers
+.C:5ab3  48          PHA
+.C:5ab4  8A          TXA
+.C:5ab5  48          PHA
+.C:5ab6  98          TYA
+.C:5ab7  48          PHA
+.C:5ab8  8A          TXA
+.C:5ab9  0A          ASL A
+.C:5aba  85 18       STA $18
+;.X = temp * 2
+.C:5abc  A5 17       LDA temp
+.C:5abe  0A          ASL A
+.C:5abf  AA          TAX
+.C:5ac0  BD 14 5B    LDA <common_phrase_pointers,X
+.C:5ac3  85 0A       STA <src_base
+.C:5ac5  BD 15 5B    LDA >common_phrase_pointers,X
+.C:5ac8  85 0B       STA >src_base
+.C:5aca  A6 18       LDX $18
+.C:5acc  BD 06 5B    LDA $5B06,X
+.C:5acf  85 0C       STA <dest_base
+.C:5ad1  BD 07 5B    LDA $5B07,X
+.C:5ad4  85 0D       STA >dest_base
+.C:5ad6  20 29 8D    JSR unpack_text
+.C:5ad9  A6 18       LDX $18
+.C:5adb  D0 23       BNE exit
+.C:5add  A9 05       LDA #$05
+.C:5adf  20 8F 5A    JSR delay
+.C:5ae2  A9 18       LDA #$18
+.C:5ae4  0A          ASL A
+.C:5ae5  AA          TAX
+.C:5ae6  BD 14 5B    LDA <common_phrase_pointers,X
+.C:5ae9  85 0A       STA <src_base
+.C:5aeb  BD 15 5B    LDA >common_phrase_pointers,X
+.C:5aee  85 0B       STA >src_base
+.C:5af0  A9 F8       LDA #$F8
+.C:5af2  85 0C       STA <dest_base
+.C:5af4  A9 06       LDA #$06
+.C:5af6  85 0D       STA >dest_base
+.C:5af8  20 29 8D    JSR unpack_text
+.C:5afb  A9 01       LDA #$01
+.C:5afd  20 8F 5A    JSR delay
+exit:
+.C:5b00  68          PLA
+.C:5b01  A8          TAY
+.C:5b02  68          PLA
+.C:5b03  AA          TAX
+.C:5b04  68          PLA
+.C:5b05  60          RTS
+;======================================
+; Sound player routines
+;======================================
+stop_sound:
+.C:7b00  A9 00       LDA #$00
+.C:7b02  8D 51 7D    STA $7D51
+.C:7b05  8D 04 D4    STA sid_voice1_control_reg
+.C:7b08  8D 0B D4    STA sid_voice2_control_reg
+.C:7b0b  AD 50 7D    LDA $7D50
+.C:7b0e  D0 03       BNE $7B13
+.C:7b10  8D 12 D4    STA sid_voice3_control_reg
+.C:7b13  60          RTS
+;======================================
+.C:7b14  A2 00       LDX #$00
+.C:7b16  8E 50 7D    STX $7D50
+.C:7b19  8E 53 7D    STX $7D53
+;-------------------------------------------
+setup_music:
+.C:7b1c  A2 00       LDX #$00
+.C:7b1e  8E 51 7D    STX $7D51
+.C:7b21  8D 56 7B    STA $7B56
+.C:7b24  8C 57 7B    STY $7B57
+.C:7b27  98          TYA
+.C:7b28  29 F0       AND #$F0
+.C:7b2a  8D 80 7D    STA $7D80
+.C:7b2d  A9 08       LDA #$08
+.C:7b2f  8D 04 D4    STA sid_voice1_control_reg
+.C:7b32  8D 0B D4    STA sid_voice2_control_reg
+.C:7b35  8D 12 D4    STA sid_voice3_control_reg
+.C:7b38  AD 53 7D    LDA $7D53
+.C:7b3b  8D 18 D4    STA sid_volume_and_filter_select_reg
+.C:7b3e  A5 01       LDA processor_port_register
+.C:7b40  8D 85 7D    STA processor_port_register_copy
+.C:7b43  29 F8       AND #$F8
+.C:7b45  85 01       STA processor_port_register
+.C:7b47  20 CF DC    JSR $DCCF
+.C:7b4a  AD 85 7D    LDA processor_port_register_copy
+.C:7b4d  85 01       STA processor_port_register
+.C:7b4f  A9 07       LDA #$07
+.C:7b51  8D 51 7D    STA $7D51
+.C:7b54  60          RTS
+;======================================
+.C:7b55  AD 8A D0    LDA $D08A
+.C:7b58  EE 56 7B    INC $7B56
+.C:7b5b  D0 03       BNE $7B60
+.C:7b5d  EE 57 7B    INC $7B57
+.C:7b60  60          RTS
+;======================================
+update_music:
+.C:7b61  AD 51 7D    LDA $7D51
+.C:7b64  F0 11       BEQ $7B77
+.C:7b66  A5 01       LDA processor_port_register
+.C:7b68  8D 85 7D    STA processor_port_register_copy
+.C:7b6b  29 F8       AND #$F8
+.C:7b6d  85 01       STA processor_port_register
+.C:7b6f  20 40 DC    JSR $DC40
+.C:7b72  AD 85 7D    LDA processor_port_register_copy
+.C:7b75  85 01       STA processor_port_register
+:
+.C:7b77  AD 52 7D    LDA $7D52
+.C:7b7a  29 0F       AND #$0F
+.C:7b7c  8D 52 7D    STA $7D52
+.C:7b7f  AD 53 7D    LDA $7D53
+.C:7b82  29 0F       AND #$0F
+.C:7b84  CD 52 7D    CMP $7D52
+.C:7b87  F0 10       BEQ exit
+.C:7b89  90 05       BCC $7B90
+.C:7b8b  CE 53 7D    DEC $7D53
+.C:7b8e  B0 03       BCS $7B93
+.C:7b90  EE 53 7D    INC $7D53
+.C:7b93  AD 53 7D    LDA $7D53
+.C:7b96  8D 18 D4    STA sid_volume_and_filter_select_reg
+exit:
+.C:7b99  60          RTS
+;======================================
+.C:7b9a  E0 0E       CPX #$0E
+.C:7b9c  90 05       BCC $7BA3
+.C:7b9e  AC 50 7D    LDY $7D50
+.C:7ba1  D0 14       BNE $7BB7
+;--------------------------------------
+.C:7ba3  BD 5A 7D    LDA $7D5A,X
+.C:7ba6  48          PHA
+.C:7ba7  AD 85 7D    LDA processor_port_register_copy
+.C:7baa  85 01       STA processor_port_register
+.C:7bac  68          PLA
+.C:7bad  9D 04 D4    STA sid_voice1_control_reg,X
+.C:7bb0  AD 85 7D    LDA processor_port_register_copy
+.C:7bb3  29 F8       AND #$F8
+.C:7bb5  85 01       STA processor_port_register
+.C:7bb7  60          RTS
+;======================================
+write_to_sound_registers:
+.C:7bb8  AD 85 7D    LDA processor_port_register_copy
+.C:7bbb  85 01       STA processor_port_register
+.C:7bbd  B9 A5 7D    LDA $7DA5,Y
+.C:7bc0  9D 06 D4    STA sid_voice1_sustain_release_reg,X
+.C:7bc3  B9 A4 7D    LDA $7DA4,Y
+.C:7bc6  9D 05 D4    STA sid_voice1_attack_decay_reg,X
+.C:7bc9  B9 A7 7D    LDA $7DA7,Y
+.C:7bcc  9D 02 D4    STA sid_voice1_pulse_width_low_reg,X
+.C:7bcf  B9 A8 7D    LDA $7DA8,Y
+.C:7bd2  9D 03 D4    STA sid_voice1_pulse_width_hi_reg,X
+.C:7bd5  B9 AB 7D    LDA $7DAB,Y
+.C:7bd8  C9 10       CMP #$10
+.C:7bda  BD 66 7C    LDA $7C66,X
+.C:7bdd  2D 81 7D    AND $7D81
+.C:7be0  90 3C       BCC $7C1E
+.C:7be2  B9 AA 7D    LDA $7DAA,Y
+.C:7be5  8D 15 D4    STA sid_filter_cutoff_low_reg
+.C:7be8  B9 AB 7D    LDA $7DAB,Y
+.C:7beb  8D 82 7D    STA $7D82
+.C:7bee  B9 AA 7D    LDA $7DAA,Y
+.C:7bf1  4E 82 7D    LSR $7D82
+.C:7bf4  6A          ROR A
+.C:7bf5  4E 82 7D    LSR $7D82
+.C:7bf8  6A          ROR A
+.C:7bf9  4E 82 7D    LSR $7D82
+.C:7bfc  6A          ROR A
+.C:7bfd  8D 16 D4    STA sid_filter_cutoff_hi_reg
+.C:7c00  AD 53 7D    LDA $7D53
+.C:7c03  29 0F       AND #$0F
+.C:7c05  8D 53 7D    STA $7D53
+.C:7c08  B9 AB 7D    LDA $7DAB,Y
+.C:7c0b  29 F0       AND #$F0
+.C:7c0d  0D 53 7D    ORA $7D53
+.C:7c10  8D 53 7D    STA $7D53
+.C:7c13  8D 18 D4    STA sid_volume_and_filter_select_reg
+.C:7c16  B9 A9 7D    LDA $7DA9,Y
+.C:7c19  29 F0       AND #$F0
+.C:7c1b  1D 65 7C    ORA $7C65,X
+.C:7c1e  8D 17 D4    STA sid_filter_resonance_control_reg
+.C:7c21  8D 81 7D    STA $7D81
+.C:7c24  B9 A9 7D    LDA $7DA9,Y
+.C:7c27  29 07       AND #$07
+.C:7c29  A8          TAY
+.C:7c2a  AD 83 7D    LDA $7D83
+.C:7c2d  29 3F       AND #$3F
+.C:7c2f  F0 05       BEQ $7C36
+.C:7c31  18          CLC
+.C:7c32  79 77 7C    ADC $7C77,Y
+.C:7c35  0A          ASL A
+.C:7c36  A8          TAY
+.C:7c37  B9 7C 7C    LDA $7C7C,Y
+.C:7c3a  9D 00 D4    STA sid_voice1_freq_control_low_reg,X
+.C:7c3d  B9 7D 7C    LDA $7C7D,Y
+.C:7c40  9D 01 D4    STA sid_voice1_freq_control_hi_reg,X
+.C:7c43  19 7C 7C    ORA $7C7C,Y
+.C:7c46  8D 83 7D    STA $7D83
+.C:7c49  AC 84 7D    LDY $7D84
+.C:7c4c  BD 5A 7D    LDA $7D5A,X
+.C:7c4f  9D 04 D4    STA sid_voice1_control_reg,X
+.C:7c52  B9 A6 7D    LDA $7DA6,Y
+.C:7c55  AC 83 7D    LDY $7D83
+.C:7c58  F0 03       BEQ $7C5D
+.C:7c5a  9D 04 D4    STA sid_voice1_control_reg,X
+.C:7c5d  AD 85 7D    LDA processor_port_register_copy
+.C:7c60  29 F8       AND #$F8
+.C:7c62  85 01       STA processor_port_register
+.C:7c64  60          RTS
+;======================================
+.C:8007  38          SEC
+.C:8008  30 78       BMI $8082
+;======================================
+restart_game:
+.C:8009  78          SEI
+.C:800a  20 05 81    JSR init_game_state
+loop:
+.C:800d  20 27 8F    JSR update_character
+.C:8010  A5 33       LDA $33
+.C:8012  F0 03       BEQ update_bkg
+.C:8014  20 86 55    JSR player_shot
+update_bkg:
+.C:8017  A5 65       LDA $65
+.C:8019  F0 07       BEQ animate_bkg_people
+.C:801b  20 5E 54    JSR setup_background
+.C:801e  A9 00       LDA #$00
+.C:8020  85 65       STA $65
+animate_bkg_people:
+.C:8022  20 87 87    JSR handle_bkg_people_animation
+.C:8025  4C 0D 80    JMP loop
+;======================================
+; IRQ handlers
+;======================================
+irq_handler1:
+.C:8028  A2 C8       LDX #$C8
+.C:802a  A5 85       LDA $85
+.C:802c  F0 02       BEQ $8030
+.C:802e  A2 C8       LDX #$C8
+.C:8030  A0 08       LDY #$08
+.C:8032  AD 11 D0    LDA vic_screen_control_register_1
+.C:8035  29 5F       AND #$5F
+.C:8037  EC 12 D0    CPX vic_raster_compare_register
+.C:803a  B0 FB       BCS $8037
+.C:803c  20 59 82    JSR $8259
+.C:803f  20 59 82    JSR $8259
+.C:8042  20 59 82    JSR $8259
+.C:8045  20 59 82    JSR $8259
+.C:8048  EA          NOP
+.C:8049  EA          NOP
+.C:804a  EA          NOP
+.C:804b  EA          NOP
+.C:804c  EA          NOP
+.C:804d  EA          NOP
+.C:804e  8C 16 D0    STY vic_screen_control2_reg
+.C:8051  8D 11 D0    STA vic_screen_control_register_1
+.C:8054  A9 00       LDA #$00
+.C:8056  8D 21 D0    STA vic_bkg_color0_register
+.C:8059  AD 00 DD    LDA cia2_port_a_data_register
+.C:805c  29 FC       AND #$FC
+.C:805e  09 03       ORA #$03
+.C:8060  8D 00 DD    STA cia2_port_a_data_register
+.C:8063  A9 16       LDA #$16
+.C:8065  8D 18 D0    STA vic_memory_control_register
+.C:8068  A9 01       LDA #$01
+.C:806a  8D 19 D0    STA vic_irq_flag_register
+;Set IRQ handler to irq_handler2
+.C:806d  A9 80       LDA #$80
+.C:806f  8D 15 03    STA >irq_vector
+.C:8072  A9 87       LDA #$87
+.C:8074  8D 14 03    STA <irq_vector
+.C:8077  A9 FA       LDA #$FA
+.C:8079  8D 12 D0    STA vic_raster_compare_register
+.C:807c  AD 11 D0    LDA vic_screen_control_register_1
+.C:807f  29 7F       AND #$7F
+.C:8081  8D 11 D0    STA vic_screen_control_register_1
+.C:8084  4C DB 80    JMP exit_irq_handler
+;=====================================================
+irq_handler2:
+.C:8087  A5 7A       LDA $7A
+.C:8089  D0 1F       BNE $80AA
+.C:808b  AD 11 D0    LDA vic_screen_control_register_1
+.C:808e  29 3B       AND #$3B
+.C:8090  09 2B       ORA #$2B
+.C:8092  A8          TAY
+.C:8093  A9 08       LDA #$08
+.C:8095  8D 16 D0    STA vic_screen_control2_reg
+.C:8098  8C 11 D0    STY vic_screen_control_register_1
+.C:809b  A9 78       LDA #$78
+.C:809d  8D 18 D0    STA vic_memory_control_register
+.C:80a0  AD 00 DD    LDA cia2_port_a_data_register
+.C:80a3  29 FC       AND #$FC
+.C:80a5  09 02       ORA #$02
+.C:80a7  8D 00 DD    STA cia2_port_a_data_register
+.C:80aa  A9 81       LDA #$81
+.C:80ac  8D 19 D0    STA vic_irq_flag_register
+;Set IRQ handler to irq_handler1
+.C:80af  A9 80       LDA #$80
+.C:80b1  8D 15 03    STA >irq_vector
+.C:80b4  A9 28       LDA #$28
+.C:80b6  8D 14 03    STA <irq_vector
+.C:80b9  A9 C8       LDA #$C8
+.C:80bb  A6 85       LDX $85
+.C:80bd  F0 02       BEQ $80C1
+.C:80bf  A9 D8       LDA #$D8
+.C:80c1  8D 12 D0    STA vic_raster_compare_register
+.C:80c4  AD 11 D0    LDA vic_screen_control_register_1
+.C:80c7  29 7F       AND #$7F
+.C:80c9  8D 11 D0    STA vic_screen_control_register_1
+.C:80cc  20 25 89    JSR handle_audio
+.C:80cf  20 54 89    JSR $8954
+.C:80d2  20 65 82    JSR draw_hand_and_gun
+.C:80d5  20 75 86    JSR $8675
+.C:80d8  20 AC 88    JSR $88AC
+;=====================================================
+exit_irq_handler:
+.C:80db  A9 81       LDA #$81
+.C:80dd  8D 19 D0    STA vic_irq_flag_register
+.C:80e0  A9 01       LDA #$01
+.C:80e2  8D 1A D0    STA vic_irq_mask_register
+.C:80e5  68          PLA
+.C:80e6  A8          TAY
+.C:80e7  68          PLA
+.C:80e8  AA          TAX
+.C:80e9  68          PLA
+.C:80ea  40          RTI
+;=====================================================
+.C:80eb  68          PLA
+.C:80ec  68          PLA
+.C:80ed  20 07 9D    JSR setup_raster_irq
+.C:80f0  A9 01       LDA #$01
+.C:80f2  8D 1A D0    STA vic_irq_mask_register
+.C:80f5  4C B5 9B    JMP $9BB5
+.C:80f8  68          PLA
+.C:80f9  68          PLA
+.C:80fa  20 07 9D    JSR setup_raster_irq
+.C:80fd  A9 01       LDA #$01
+.C:80ff  8D 1A D0    STA vic_irq_mask_register
+.C:80ff  8D 1A D0    STA vic_irq_mask_register
+.C:8102  4C DB 58    JMP $58DB
+;=====================================================
+init_game_state:
+.C:8105  A9 38       LDA #$38
+.C:8107  8D 18 01    STA $0118
+.C:810a  A9 8C       LDA #$8C
+.C:810c  8D 19 01    STA $0119
+.C:810f  A9 36       LDA #$36
+.C:8111  85 01       STA processor_port_register
+.C:8113  A9 2F       LDA #$2F
+.C:8115  85 00       STA $00
+.C:8117  AD 0E DC    LDA cia1_control_timer_a_reg
+.C:811a  29 FE       AND #$FE
+.C:811c  8D 0E DC    STA cia1_control_timer_a_reg
+.C:811f  A9 2B       LDA #$2B
+.C:8121  8D 11 D0    STA vic_screen_control_register_1
+.C:8124  A9 08       LDA #$08
+.C:8126  8D 16 D0    STA vic_screen_control2_reg
+.C:8129  A9 02       LDA #$02
+.C:812b  8D 00 DD    STA cia2_port_a_data_register
+.C:812e  A9 3F       LDA #$3F
+.C:8130  8D 02 DD    STA cia2_port_a_data_direction_reg
+.C:8133  A9 78       LDA #$78
+.C:8135  8D 18 D0    STA vic_memory_control_register
+.C:8138  A9 00       LDA #$00
+.C:813a  8D 15 D0    STA vic_sprite_enable_register
+.C:813d  8D 1B D0    STA vic_sprite_priority_reg
+.C:8140  A9 FC       LDA #$FC
+.C:8142  8D FB 5F    STA $5FFB
+.C:8145  A9 FD       LDA #$FD
+.C:8147  8D FC 5F    STA $5FFC
+.C:814a  A9 FE       LDA #$FE
+.C:814c  8D FD 5F    STA $5FFD
+.C:814f  A9 FF       LDA #$FF
+.C:8151  8D FE 5F    STA $5FFE
+;Clear zero page variables
+.C:8154  A2 8F       LDX #$8F
+.C:8156  A9 00       LDA #$00
+clear_zp_loop:
+.C:8158  95 01       STA $01,X
+.C:815a  CA          DEX
+.C:815b  D0 FB       BNE clear_zp_loop
+;Init random number seed
+.C:815d  85 7D       STA random_b
+.C:815f  A9 01       LDA #$01
+.C:8161  85 7C       STA random_a
+.C:8163  A9 A0       LDA #$A0
+.C:8165  85 3B       STA crosshair_sprite_x_lo
+.C:8167  A9 B3       LDA #$B3
+.C:8169  85 3D       STA crosshair_sprite_y
+.C:816b  A9 20       LDA #$20
+.C:816d  85 3E       STA $3E
+;Set colors of crosshair and background people sprites
+.C:816f  A9 E0       LDA #$E0
+.C:8171  8D F9 5F    STA $5FF9
+.C:8174  A9 00       LDA #$00
+.C:8176  8D 28 D0    STA vic_sprite1_color_reg
+.C:8179  A9 E1       LDA #$E1
+.C:817b  8D FA 5F    STA $5FFA
+.C:817e  A9 02       LDA #$02
+.C:8180  8D 29 D0    STA vic_sprite2_color_reg
+.C:8183  A9 E3       LDA #$E3
+.C:8185  8D FF 5F    STA $5FFF
+.C:8188  A9 00       LDA #$00
+.C:818a  8D 2E D0    STA vic_sprite7_color_reg
+.C:818d  A9 FF       LDA #$FF
+.C:818f  85 49       STA $49
+.C:8191  20 5A 82    JSR clear_text_area
+.C:8194  A9 00       LDA #$00
+.C:8196  85 0E       STA $0E
+.C:8198  A9 D8       LDA #$D8
+.C:819a  85 0F       STA $0F
+.C:819c  A0 00       LDY #$00
+.C:819e  A9 00       LDA #$00
+.C:81a0  91 0E       STA ($0E),Y
+.C:81a2  A5 0E       LDA $0E
+.C:81a4  18          CLC
+.C:81a5  69 01       ADC #$01
+.C:81a7  85 0E       STA $0E
+.C:81a9  A5 0F       LDA $0F
+.C:81ab  69 00       ADC #$00
+.C:81ad  85 0F       STA $0F
+.C:81af  C9 DB       CMP #$DB
+.C:81b1  D0 EB       BNE $819E
+.C:81b3  A5 0E       LDA $0E
+.C:81b5  C9 E8       CMP #$E8
+.C:81b7  D0 E5       BNE $819E
+.C:81b9  A2 F0       LDX #$F0
+.C:81bb  A9 00       LDA #$00
+.C:81bd  9D F7 5E    STA $5EF7,X
+.C:81c0  CA          DEX
+.C:81c1  D0 F8       BNE $81BB
+.C:81c3  A2 28       LDX #$28
+.C:81c5  A9 04       LDA #$04
+.C:81c7  9D F7 DA    STA $DAF7,X
+.C:81ca  CA          DEX
+.C:81cb  D0 F8       BNE $81C5
+.C:81cd  A2 28       LDX #$28
+.C:81cf  A9 0E       LDA #$0E
+.C:81d1  9D 47 DB    STA $DB47,X
+.C:81d4  CA          DEX
+.C:81d5  D0 F8       BNE $81CF
+.C:81d7  A2 78       LDX #$78
+.C:81d9  A9 0F       LDA #$0F
+.C:81db  9D 6F DB    STA $DB6F,X
+.C:81de  CA          DEX
+.C:81df  D0 F8       BNE $81D9
+.C:81e1  A9 00       LDA #$00
+.C:81e3  8D 20 D0    STA vic_border_color_register
+.C:81e6  8D 21 D0    STA vic_bkg_color0_register
+.C:81e9  A9 FF       LDA #$FF
+.C:81eb  85 4A       STA $4A
+.C:81ed  A9 64       LDA #$64
+.C:81ef  85 8C       STA $8C
+.C:81f1  A9 06       LDA #$06
+.C:81f3  85 84       STA crimes_committed
+.C:81f5  A9 0B       LDA #$0B
+.C:81f7  8D F4 5C    STA $5CF4
+.C:81fa  A9 B1       LDA #$B1
+.C:81fc  8D F5 5C    STA $5CF5
+.C:81ff  A9 0F       LDA #$0F
+.C:8201  8D F6 5C    STA $5CF6
+.C:8204  8D F7 5C    STA $5CF7
+.C:8207  20 00 7B    JSR stop_sound
+.C:820a  A9 00       LDA #$00
+.C:820c  8D 53 7D    STA $7D53
+.C:820f  8D 50 7D    STA $7D50
+.C:8212  8D 52 7D    STA $7D52
+;Save IRQ vector 
+.C:8215  AD 14 03    LDA <irq_vector
+.C:8218  85 2B       STA $2B
+.C:821a  AD 15 03    LDA >irq_vector
+.C:821d  85 2C       STA $2C
+;Setup IRQ vector to $8028
+.C:821f  A9 80       LDA #$80
+.C:8221  8D 15 03    STA >irq_vector
+.C:8224  A9 28       LDA #$28
+.C:8226  8D 14 03    STA <irq_vector
+.C:8229  A9 C8       LDA #$C8
+.C:822b  8D 12 D0    STA vic_raster_compare_register
+.C:822e  AD 11 D0    LDA vic_screen_control_register_1
+.C:8231  29 7F       AND #$7F
+.C:8233  09 10       ORA #$10
+.C:8235  8D 11 D0    STA vic_screen_control_register_1
+.C:8238  A9 8F       LDA #$8F
+.C:823a  8D 19 D0    STA vic_irq_flag_register
+.C:823d  AD 12 D0    LDA vic_raster_compare_register
+.C:8240  C9 C0       CMP #$C0
+.C:8242  D0 F9       BNE $823D
+.C:8244  A9 01       LDA #$01
+.C:8246  8D 1A D0    STA vic_irq_mask_register
+.C:8249  58          CLI
+.C:824a  A9 0D       LDA #$0D
+.C:824c  85 87       STA scene_number
+.C:824e  20 D9 9B    JSR setup_scene
+.C:8251  A9 00       LDA #$00
+.C:8253  85 87       STA scene_number
+.C:8255  A9 0A       LDA #$0A
+.C:8257  85 86       STA $86
+.C:8259  60          RTS
+;=====================================================
+clear_text_area:
+.C:825a  A2 F0       LDX #$F0
+.C:825c  A9 20       LDA #$20
+.C:825e  9D F7 06    STA $06F7,X
+.C:8261  CA          DEX
+.C:8262  D0 F8       BNE $825C
+.C:8264  60          RTS
+;=====================================================
+draw_hand_and_gun:
+.C:8265  A5 85       LDA $85
+.C:8267  D0 06       BNE $826F
+.C:8269  A5 3E       LDA $3E
+.C:826b  F0 05       BEQ $8272
+.C:826d  C6 3E       DEC $3E
+.C:826f  4C 5C 86    JMP $865C
+.C:8272  A5 49       LDA $49
+.C:8274  F0 22       BEQ $8298
+.C:8276  A9 01       LDA #$01
+.C:8278  85 49       STA $49
+;---------------------------------------
+;Update the gun draw counter if we're in an ongoing count
+;---------------------------------------
+.C:827a  A5 4C       LDA gun_draw_crosshair_counter
+.C:827c  F0 08       BEQ handle_holster_gun
+.C:827e  C9 05       CMP #$05
+.C:8280  B0 04       BCS handle_holster_gun
+.C:8282  E6 4C       INC gun_draw_crosshair_counter
+.C:8284  E6 3F       INC $3F
+;---------------------------------------
+;Update the gun holster counter if we're in an ongoing count
+;---------------------------------------
+handle_holster_gun:
+.C:8286  A5 4D       LDA gun_holster_counter
+.C:8288  F0 0E       BEQ $8298
+;Set the crosshair coordinate outside visible area
+.C:828a  A9 B3       LDA #$B3
+.C:828c  85 3D       STA crosshair_sprite_y
+;Update the holster counter
+.C:828e  C6 4D       DEC gun_holster_counter
+.C:8290  A5 4D       LDA gun_holster_counter
+.C:8292  85 3F       STA $3F
+;---------------------------------------
+;Reset the gun draw counter
+.C:8294  A9 00       LDA #$00
+.C:8296  85 4C       STA gun_draw_crosshair_counter
+;---------------------------------------
+.C:8298  A5 01       LDA processor_port_register
+.C:829a  29 F8       AND #$F8
+.C:829c  85 01       STA processor_port_register
+.C:829e  A5 3F       LDA $3F
+.C:82a0  C9 04       CMP #$04
+.C:82a2  90 03       BCC $82A7
+.C:82a4  4C 7F 84    JMP $847F
+.C:82a7  A5 3F       LDA $3F
+.C:82a9  0A          ASL A
+.C:82aa  AA          TAX
+.C:82ab  BD 5D 86    LDA $865D,X
+.C:82ae  85 04       STA $04
+.C:82b0  BD 5E 86    LDA $865E,X
+.C:82b3  85 05       STA $05
+.C:82b5  A9 46       LDA #$46
+.C:82b7  85 02       STA $02
+.C:82b9  A9 5D       LDA #$5D
+.C:82bb  85 03       STA $03
+.C:82bd  A5 49       LDA $49
+.C:82bf  D0 11       BNE $82D2
+.C:82c1  A5 04       LDA $04
+.C:82c3  18          CLC
+.C:82c4  69 30       ADC #$30
+.C:82c6  85 04       STA $04
+.C:82c8  A5 05       LDA $05
+.C:82ca  69 00       ADC #$00
+.C:82cc  85 05       STA $05
+.C:82ce  A9 E6       LDA #$E6
+.C:82d0  85 02       STA $02
+.C:82d2  A2 03       LDX #$03
+.C:82d4  A0 0B       LDY #$0B
+.C:82d6  B1 04       LDA ($04),Y
+.C:82d8  91 02       STA ($02),Y
+.C:82da  88          DEY
+.C:82db  10 F9       BPL $82D6
+.C:82dd  A5 02       LDA $02
+.C:82df  18          CLC
+.C:82e0  69 28       ADC #$28
+.C:82e2  85 02       STA $02
+.C:82e4  A5 03       LDA $03
+.C:82e6  69 00       ADC #$00
+.C:82e8  85 03       STA $03
+.C:82ea  A5 04       LDA $04
+.C:82ec  18          CLC
+.C:82ed  69 0C       ADC #$0C
+.C:82ef  85 04       STA $04
+.C:82f1  A5 05       LDA $05
+.C:82f3  69 00       ADC #$00
+.C:82f5  85 05       STA $05
+.C:82f7  CA          DEX
+.C:82f8  10 DA       BPL $82D4
+.C:82fa  A9 30       LDA #$30
+.C:82fc  85 02       STA $02
+.C:82fe  A9 6A       LDA #$6A
+.C:8300  85 03       STA $03
+.C:8300  85 03       STA $03
+.C:8302  A5 3F       LDA $3F
+.C:8304  0A          ASL A
+.C:8305  AA          TAX
+.C:8306  BD 5E 86    LDA $865E,X
+.C:8309  85 05       STA $05
+.C:830b  BD 5D 86    LDA $865D,X
+.C:830e  18          CLC
+.C:830f  69 60       ADC #$60
+.C:8311  85 04       STA $04
+.C:8313  A5 05       LDA $05
+.C:8315  69 00       ADC #$00
+.C:8317  85 05       STA $05
+.C:8319  A5 49       LDA $49
+.C:831b  D0 15       BNE $8332
+.C:831d  A5 04       LDA $04
+.C:831f  18          CLC
+.C:8320  69 80       ADC #$80
+.C:8322  85 04       STA $04
+.C:8324  A5 05       LDA $05
+.C:8326  69 01       ADC #$01
+.C:8328  85 05       STA $05
+.C:832a  A9 30       LDA #$30
+.C:832c  85 02       STA $02
+.C:832e  A9 6F       LDA #$6F
+.C:8330  85 03       STA $03
+.C:8332  4C 95 83    JMP $8395
+;=================================
+.C:8395  A2 1F       LDX #$1F
+:
+.C:8397  A0 00       LDY #$00
+.C:8399  B1 04       LDA ($04),Y
+.C:839b  91 02       STA ($02),Y
+.C:839d  A0 08       LDY #$08
+.C:839f  B1 04       LDA ($04),Y
+.C:83a1  91 02       STA ($02),Y
+.C:83a3  A0 10       LDY #$10
+.C:83a5  B1 04       LDA ($04),Y
+.C:83a7  91 02       STA ($02),Y
+.C:83a9  A0 18       LDY #$18
+.C:83ab  B1 04       LDA ($04),Y
+.C:83ad  91 02       STA ($02),Y
+.C:83af  A0 20       LDY #$20
+.C:83b1  B1 04       LDA ($04),Y
+.C:83b3  91 02       STA ($02),Y
+.C:83b5  A0 28       LDY #$28
+.C:83b7  B1 04       LDA ($04),Y
+.C:83b9  91 02       STA ($02),Y
+.C:83bb  A0 30       LDY #$30
+.C:83bd  B1 04       LDA ($04),Y
+.C:83bf  91 02       STA ($02),Y
+.C:83c1  A0 38       LDY #$38
+.C:83c3  B1 04       LDA ($04),Y
+.C:83c5  91 02       STA ($02),Y
+.C:83c7  A0 40       LDY #$40
+.C:83c9  B1 04       LDA ($04),Y
+.C:83cb  91 02       STA ($02),Y
+.C:83cd  A0 48       LDY #$48
+.C:83cf  B1 04       LDA ($04),Y
+.C:83d1  91 02       STA ($02),Y
+.C:83d3  A0 50       LDY #$50
+.C:83d5  B1 04       LDA ($04),Y
+.C:83d7  91 02       STA ($02),Y
+.C:83d9  A0 58       LDY #$58
+.C:83db  B1 04       LDA ($04),Y
+.C:83dd  91 02       STA ($02),Y
+.C:83df  A5 02       LDA $02
+.C:83e1  29 07       AND #$07
+.C:83e3  C9 07       CMP #$07
+.C:83e5  D0 10       BNE $83F7
+.C:83e7  A5 02       LDA $02
+.C:83e9  18          CLC
+.C:83ea  69 39       ADC #$39
+.C:83ec  85 02       STA $02
+.C:83ee  A5 03       LDA $03
+.C:83f0  69 01       ADC #$01
+.C:83f2  85 03       STA $03
+.C:83f4  4C 04 84    JMP $8404
+:
+.C:83f7  A5 02       LDA $02
+.C:83f9  18          CLC
+.C:83fa  69 01       ADC #$01
+.C:83fc  85 02       STA $02
+.C:83fe  A5 03       LDA $03
+.C:8400  69 00       ADC #$00
+.C:8402  85 03       STA $03
+:
+.C:8404  A5 04       LDA $04
+.C:8406  29 07       AND #$07
+.C:8408  C9 07       CMP #$07
+.C:840a  D0 10       BNE $841C
+.C:840c  A5 04       LDA $04
+.C:840e  18          CLC
+.C:840f  69 59       ADC #$59
+.C:8411  85 04       STA $04
+.C:8413  A5 05       LDA $05
+.C:8415  69 00       ADC #$00
+.C:8417  85 05       STA $05
+.C:8419  4C 29 84    JMP $8429
+:
+.C:841c  A5 04       LDA $04
+.C:841e  18          CLC
+.C:841f  69 01       ADC #$01
+.C:8421  85 04       STA $04
+.C:8423  A5 05       LDA $05
+.C:8425  69 00       ADC #$00
+.C:8427  85 05       STA $05
+:
+.C:8429  CA          DEX
+.C:842a  30 03       BMI $842F
+.C:842c  4C 97 83    JMP $8397
+:
+.C:842f  C6 49       DEC $49
+.C:8431  F0 04       BEQ $8437
+.C:8433  A9 04       LDA #$04
+.C:8435  85 3E       STA $3E
+:
+.C:8437  A5 01       LDA processor_port_register
+.C:8439  29 F8       AND #$F8
+.C:843b  09 06       ORA #$06
+.C:843d  85 01       STA processor_port_register
+.C:843f  A5 3D       LDA crosshair_sprite_y
+.C:8441  38          SEC
+.C:8442  E9 30       SBC #$30
+.C:8444  4A          LSR A
+.C:8445  4A          LSR A
+.C:8446  4A          LSR A
+.C:8447  49 0F       EOR #$0F
+.C:8449  C9 1F       CMP #$1F
+.C:844b  D0 02       BNE $844F
+.C:844d  A9 00       LDA #$00
+:
+.C:844f  AA          TAX
+.C:8450  A0 00       LDY #$00
+:
+.C:8452  BD EF 85    LDA $85EF,X
+.C:8455  99 A8 6C    STA $6CA8,Y
+.C:8458  E8          INX
+.C:8459  C8          INY
+.C:845a  C0 08       CPY #$08
+.C:845c  D0 F4       BNE $8452
+.C:845e  A0 00       LDY #$00
+:
+.C:8460  BD EF 85    LDA $85EF,X
+.C:8463  99 E8 6D    STA $6DE8,Y
+.C:8466  E8          INX
+.C:8467  C8          INY
+.C:8468  C0 08       CPY #$08
+.C:846a  D0 F4       BNE $8460
+.C:846c  A0 00       LDY #$00
+:
+.C:846e  BD EF 85    LDA $85EF,X
+.C:8471  99 28 6F    STA $6F28,Y
+.C:8474  E8          INX
+.C:8475  C8          INY
+.C:8476  C0 08       CPY #$08
+.C:8478  D0 F4       BNE $846E
+.C:847a  68          PLA
+.C:847b  68          PLA
+.C:847c  4C DB 80    JMP $80DB
+;======================================
+.C:847f  A9 30       LDA #$30
+.C:8481  85 02       STA $02
+.C:8483  A9 6A       LDA #$6A
+.C:8485  85 03       STA $03
+.C:8487  A5 3F       LDA $3F
+.C:8489  0A          ASL A
+.C:848a  AA          TAX
+.C:848b  BD 5D 86    LDA $865D,X
+.C:848e  85 04       STA $04
+.C:8490  BD 5E 86    LDA $865E,X
+.C:8493  85 05       STA $05
+.C:8495  A5 3D       LDA crosshair_sprite_y
+.C:8497  38          SEC
+.C:8498  E9 30       SBC #$30
+.C:849a  4A          LSR A
+.C:849b  4A          LSR A
+.C:849c  4A          LSR A
+.C:849d  0A          ASL A
+.C:849e  AA          TAX
+.C:849f  BD 35 83    LDA $8335,X
+.C:84a2  18          CLC
+.C:84a3  65 02       ADC $02
+.C:84a5  85 02       STA $02
+.C:84a7  A5 03       LDA $03
+.C:84a9  7D 36 83    ADC $8336,X
+.C:84ac  85 03       STA $03
+.C:84ae  A2 27       LDX #$27
+.C:84b0  A0 00       LDY #$00
+.C:84b2  B1 04       LDA ($04),Y
+.C:84b4  91 02       STA ($02),Y
+.C:84b6  A0 08       LDY #$08
+.C:84b8  B1 04       LDA ($04),Y
+.C:84ba  91 02       STA ($02),Y
+.C:84bc  A0 10       LDY #$10
+.C:84be  B1 04       LDA ($04),Y
+.C:84c0  91 02       STA ($02),Y
+.C:84c2  A0 18       LDY #$18
+.C:84c4  B1 04       LDA ($04),Y
+.C:84c6  91 02       STA ($02),Y
+.C:84c8  A0 20       LDY #$20
+.C:84ca  B1 04       LDA ($04),Y
+.C:84cc  91 02       STA ($02),Y
+.C:84ce  A0 28       LDY #$28
+.C:84d0  B1 04       LDA ($04),Y
+.C:84d2  91 02       STA ($02),Y
+.C:84d4  A0 30       LDY #$30
+.C:84d6  B1 04       LDA ($04),Y
+.C:84d8  91 02       STA ($02),Y
+.C:84da  A0 38       LDY #$38
+.C:84dc  B1 04       LDA ($04),Y
+.C:84de  91 02       STA ($02),Y
+.C:84e0  A0 40       LDY #$40
+.C:84e2  B1 04       LDA ($04),Y
+.C:84e4  91 02       STA ($02),Y
+.C:84e6  A0 48       LDY #$48
+.C:84e8  B1 04       LDA ($04),Y
+.C:84ea  91 02       STA ($02),Y
+.C:84ec  A0 50       LDY #$50
+.C:84ee  B1 04       LDA ($04),Y
+.C:84f0  91 02       STA ($02),Y
+.C:84f2  A0 58       LDY #$58
+.C:84f4  B1 04       LDA ($04),Y
+.C:84f6  91 02       STA ($02),Y
+.C:84f8  A5 02       LDA $02
+.C:84fa  29 07       AND #$07
+.C:84fc  C9 07       CMP #$07
+.C:84fe  D0 10       BNE $8510
+.C:8500  A5 02       LDA $02
+.C:8500  A5 02       LDA $02
+.C:8502  18          CLC
+.C:8503  69 39       ADC #$39
+.C:8505  85 02       STA $02
+.C:8507  A5 03       LDA $03
+.C:8509  69 01       ADC #$01
+.C:850b  85 03       STA $03
+.C:850d  4C 1D 85    JMP $851D
+.C:8510  A5 02       LDA $02
+.C:8512  18          CLC
+.C:8513  69 01       ADC #$01
+.C:8515  85 02       STA $02
+.C:8517  A5 03       LDA $03
+.C:8519  69 00       ADC #$00
+.C:851b  85 03       STA $03
+.C:851d  A5 04       LDA $04
+.C:851f  29 07       AND #$07
+.C:8521  C9 07       CMP #$07
+.C:8523  D0 10       BNE $8535
+.C:8525  A5 04       LDA $04
+.C:8527  18          CLC
+.C:8528  69 59       ADC #$59
+.C:852a  85 04       STA $04
+.C:852c  A5 05       LDA $05
+.C:852e  69 00       ADC #$00
+.C:8530  85 05       STA $05
+.C:8532  4C 42 85    JMP $8542
+.C:8535  A5 04       LDA $04
+.C:8537  18          CLC
+.C:8538  69 01       ADC #$01
+.C:853a  85 04       STA $04
+.C:853c  A5 05       LDA $05
+.C:853e  69 00       ADC #$00
+.C:8540  85 05       STA $05
+.C:8542  CA          DEX
+.C:8543  30 03       BMI $8548
+.C:8545  4C B0 84    JMP $84B0
+.C:8548  A9 03       LDA #$03
+.C:854a  85 3E       STA $3E
+.C:854c  A5 3D       LDA crosshair_sprite_y
+.C:854e  38          SEC
+.C:854f  E9 30       SBC #$30
+.C:8551  4A          LSR A
+.C:8552  4A          LSR A
+.C:8553  4A          LSR A
+.C:8554  49 0F       EOR #$0F
+.C:8556  C9 1F       CMP #$1F
+.C:8558  D0 02       BNE $855C
+.C:855a  A9 00       LDA #$00
+.C:855c  AA          TAX
+.C:855d  A0 00       LDY #$00
+.C:855f  BD EF 85    LDA $85EF,X
+.C:8562  99 A8 6C    STA $6CA8,Y
+.C:8565  E8          INX
+.C:8566  C8          INY
+.C:8567  C0 08       CPY #$08
+.C:8569  D0 F4       BNE $855F
+.C:856b  A0 00       LDY #$00
+.C:856d  BD EF 85    LDA $85EF,X
+.C:8570  99 E8 6D    STA $6DE8,Y
+.C:8573  E8          INX
+.C:8574  C8          INY
+.C:8575  C0 08       CPY #$08
+.C:8577  D0 F4       BNE $856D
+.C:8579  A0 00       LDY #$00
+.C:857b  BD EF 85    LDA $85EF,X
+.C:857e  99 28 6F    STA $6F28,Y
+.C:8581  E8          INX
+.C:8582  C8          INY
+.C:8583  C0 08       CPY #$08
+.C:8585  D0 F4       BNE $857B
+.C:8587  A9 FF       LDA #$FF
+.C:8589  8D 60 5E    STA $5E60
+.C:858c  8D 61 5E    STA $5E61
+.C:858f  8D 62 5E    STA $5E62
+.C:8592  A5 3D       LDA crosshair_sprite_y
+.C:8594  38          SEC
+.C:8595  E9 30       SBC #$30
+.C:8597  4A          LSR A
+.C:8598  4A          LSR A
+.C:8599  4A          LSR A
+.C:859a  C9 1F       CMP #$1F
+.C:859c  D0 02       BNE $85A0
+.C:859e  A9 00       LDA #$00
+.C:85a0  85 21       STA $21
+.C:85a2  A2 00       LDX #$00
+.C:85a4  A0 00       LDY #$00
+.C:85a6  E4 21       CPX $21
+.C:85a8  B0 42       BCS $85EC
+.C:85aa  BD 1F 86    LDA $861F,X
+.C:85ad  99 30 6A    STA $6A30,Y
+.C:85b0  BD 37 86    LDA $8637,X
+.C:85b3  99 38 6A    STA $6A38,Y
+.C:85b6  E8          INX
+.C:85b7  C8          INY
+.C:85b8  C0 08       CPY #$08
+.C:85ba  D0 EA       BNE $85A6
+.C:85bc  A0 00       LDY #$00
+.C:85be  E4 21       CPX $21
+.C:85c0  B0 2A       BCS $85EC
+.C:85c2  BD 1F 86    LDA $861F,X
+.C:85c5  99 70 6B    STA $6B70,Y
+.C:85c8  BD 37 86    LDA $8637,X
+.C:85cb  99 78 6B    STA $6B78,Y
+.C:85ce  E8          INX
+.C:85cf  C8          INY
+.C:85d0  C0 08       CPY #$08
+.C:85d2  D0 EA       BNE $85BE
+.C:85d4  A0 00       LDY #$00
+.C:85d6  E4 21       CPX $21
+.C:85d8  B0 12       BCS $85EC
+.C:85da  BD 1F 86    LDA $861F,X
+.C:85dd  99 B0 6C    STA $6CB0,Y
+.C:85e0  BD 37 86    LDA $8637,X
+.C:85e3  99 B8 6C    STA $6CB8,Y
+.C:85e6  E8          INX
+.C:85e7  C8          INY
+.C:85e8  C0 08       CPY #$08
+.C:85ea  D0 EA       BNE $85D6
+.C:85ec  4C 4F 86    JMP $864F
+;=====================================================
+.C:85ef  40          RTI
+.C:85f0  A4 C8       LDY $C8
+.C:85f2  F0 E0       BEQ $85D4
+.C:85f4  C8          INY
+.C:85f5  F0 E0       BEQ $85D7
+.C:85f7  A8          TAY
+.C:85f8  D0 E0       BNE $85DA
+.C:85fa  D4 68       NOOP $68,X
+.C:85fc  54 7A       NOOP $7A,X
+.C:85fe  1D 0F 07    ORA $070F,X
+
+.C:8673  A0 FA       LDY #$FA
+;=====================================================
+.C:8675  A5 5C       LDA $5C
+.C:8677  F0 02       BEQ $867B
+.C:8679  C6 5C       DEC $5C
+.C:867b  A5 48       LDA $48
+.C:867d  29 1F       AND #$1F
+.C:867f  D0 22       BNE $86A3
+.C:8681  A9 9D       LDA #$9D
+.C:8683  85 03       STA $03
+.C:8685  A9 A1       LDA #$A1
+.C:8687  85 02       STA $02
+.C:8689  A0 7B       LDY #$7B
+.C:868b  A9 00       LDA #$00
+.C:868d  85 21       STA $21
+.C:868f  98          TYA
+.C:8690  51 02       EOR ($02),Y
+.C:8692  45 21       EOR $21
+.C:8694  88          DEY
+.C:8695  D0 F6       BNE $868D
+.C:8697  C9 D3       CMP #$D3
+.C:8699  85 21       STA $21
+.C:869b  D0 06       BNE $86A3
+.C:869d  A5 63       LDA character_animation_delay
+.C:869f  F0 02       BEQ $86A3
+.C:86a1  C6 63       DEC character_animation_delay
+.C:86a3  A5 66       LDA $66
+.C:86a5  F0 03       BEQ $86AA
+.C:86a7  4C 7F 87    JMP exit
+.C:86aa  A5 2E       LDA $2E
+.C:86ac  F0 02       BEQ $86B0
+.C:86ae  C6 2E       DEC $2E
+.C:86b0  A5 2F       LDA selected_line_display_timer
+.C:86b2  F0 09       BEQ $86BD
+.C:86b4  C9 01       CMP #$01
+.C:86b6  D0 03       BNE $86BB
+.C:86b8  20 3A 8C    JSR handle_dialogue
+.C:86bb  C6 2F       DEC selected_line_display_timer
+.C:86bd  A5 30       LDA character_line_display_timer
+.C:86bf  F0 09       BEQ $86CA
+.C:86c1  C9 01       CMP #$01
+.C:86c3  D0 03       BNE $86C8
+.C:86c5  20 21 8E    JSR draw_dialogue_phrases
+.C:86c8  C6 30       DEC character_line_display_timer
+.C:86ca  20 D4 8A    JSR handle_click_on_dialogue_phrase
+.C:86cd  20 8E 8A    JSR scan_input_controllers
+;Are we ready to draw/move the crosshair?
+;Check the gun_draw_counter
+.C:86d0  A5 4C       LDA gun_draw_crosshair_counter
+.C:86d2  C9 05       CMP #$05
+.C:86d4  B0 03       BCS add_delta_x
+;If we're not ready yet, exit
+.C:86d6  4C 7F 87    JMP exit
+;---------------------------------------
+; Add deltas to the crosshair sprite based on the current joystick direction
+;---------------------------------------
+add_delta_x:
+; Add delta X lo/hi 
+.C:86d9  A6 39       LDX joystick_direction_state
+.C:86db  BD F9 88    LDA crosshair_delta_x_lo_for_direction,X
+.C:86de  18          CLC
+.C:86df  65 3B       ADC crosshair_sprite_x_lo
+.C:86e1  85 3B       STA crosshair_sprite_x_lo
+.C:86e3  BD 05 89    LDA crosshair_delta_x_hi_for_direction,X
+.C:86e6  65 3C       ADC crosshair_sprite_x_hi
+.C:86e8  85 3C       STA crosshair_sprite_x_hi
+;---------------------------------------
+;Limit the crosshair X coordinates so it remains within the screen
+;---------------------------------------
+;Is the X hi value > 0? 
+; If so, we're closer to the right side
+; Otherwise, we're closer to the left side
+.C:86ea  A5 3C       LDA crosshair_sprite_x_hi
+.C:86ec  F0 0D       BEQ limit_left
+;---------------------------------------
+;We're closer to the right side
+.C:86ee  A5 3B       LDA crosshair_sprite_x_lo
+;Are we hitting the right border?
+.C:86f0  C9 4A       CMP #$4A
+.C:86f2  90 04       BCC $86F8
+;We are, limit it
+.C:86f4  A9 4A       LDA #$4A
+.C:86f6  85 3B       STA crosshair_sprite_x_lo
+.C:86f8  4C 05 87    JMP add_delta_y
+;---------------------------------------
+;We're closer to the left side
+limit_left:
+.C:86fb  A5 3B       LDA crosshair_sprite_x_lo
+;Are we hitting the left border?
+.C:86fd  C9 4C       CMP #$4C
+.C:86ff  B0 04       BCS add_delta_y
+;We are, limit it
+.C:8701  A9 4C       LDA #$4C
+.C:8703  85 3B       STA crosshair_sprite_x_lo
+;---------------------------------------
+add_delta_y:
+; Add delta Y for the joystick direction
+.C:8705  A5 3D       LDA crosshair_sprite_y
+.C:8707  18          CLC
+.C:8708  7D 15 89    ADC crosshair_delta_y_for_direction,X
+.C:870b  C9 30       CMP #$30
+.C:870d  B0 02       BCS $8711
+.C:870f  A9 30       LDA #$30
+.C:8711  C9 B3       CMP #$B3
+.C:8713  90 10       BCC $8725
+;---------------------------------------
+;Holster the gun
+;---------------------------------------
+.C:8715  A9 04       LDA #$04
+.C:8717  85 4D       STA gun_holster_counter
+.C:8719  A9 A0       LDA #$A0
+.C:871b  85 3B       STA crosshair_sprite_x_lo
+;Hide crosshair sprites
+.C:871d  AD 15 D0    LDA vic_sprite_enable_register
+.C:8720  29 F9       AND #$F9
+.C:8722  8D 15 D0    STA vic_sprite_enable_register
+.C:8725  A5 3D       LDA crosshair_sprite_y
+.C:8727  18          CLC
+.C:8728  7D 15 89    ADC crosshair_delta_y_for_direction,X
+.C:872b  C9 30       CMP #$30
+.C:872d  B0 02       BCS $8731
+.C:872f  A9 30       LDA #$30
+.C:8731  C9 B3       CMP #$B3
+.C:8733  90 02       BCC $8737
+.C:8735  A9 B3       LDA #$B3
+.C:8737  85 3D       STA crosshair_sprite_y
+;Set X position of crosshair
+.C:8739  A5 3B       LDA crosshair_sprite_x_lo
+.C:873b  8D 02 D0    STA sprite1_x_lo_register
+.C:873e  8D 04 D0    STA sprite2_x_lo_register
+.C:8741  A5 3C       LDA crosshair_sprite_x_hi
+.C:8743  0A          ASL A
+.C:8744  29 02       AND #$02
+.C:8746  85 21       STA $21
+.C:8748  AD 10 D0    LDA sprites_x_hi_combined_reg
+.C:874b  29 FD       AND #$FD
+.C:874d  05 21       ORA $21
+.C:874f  8D 10 D0    STA sprites_x_hi_combined_reg
+.C:8752  A5 3C       LDA crosshair_sprite_x_hi
+.C:8754  0A          ASL A
+.C:8755  0A          ASL A
+.C:8756  29 04       AND #$04
+.C:8758  85 21       STA $21
+.C:875a  AD 10 D0    LDA sprites_x_hi_combined_reg
+.C:875d  29 FB       AND #$FB
+.C:875f  05 21       ORA $21
+.C:8761  8D 10 D0    STA sprites_x_hi_combined_reg
+;Set Y position of crosshair
+.C:8764  A5 3D       LDA crosshair_sprite_y
+.C:8766  8D 03 D0    STA sprite1_y_register
+.C:8769  8D 05 D0    STA sprite2_y_register
+.C:876c  A5 3C       LDA crosshair_sprite_x_hi
+.C:876e  6A          ROR A
+.C:876f  A5 3B       LDA crosshair_sprite_x_lo
+.C:8771  6A          ROR A
+.C:8772  A2 0B       LDX #$0B
+.C:8774  A0 FF       LDY #$FF
+.C:8776  C8          INY
+.C:8777  CA          DEX
+.C:8778  D9 80 87    CMP $8780,Y
+.C:877b  B0 F9       BCS $8776
+.C:877d  86 3F       STX $3F
+exit:
+.C:877f  60          RTS
+;=====================================================
+.C:8780  2C 2E 35    BIT $352E
+.C:8783  3E 4A 58    ROL $584A,X
+.C:8786  FF A5 44    ISB $44A5,X
+;=====================================================
+handle_bkg_people_animation:
+.C:8787  A5 44       LDA $44
+.C:8789  F0 03       BEQ $878E
+.C:878b  4C 8B 88    JMP $888B
+.C:878e  A9 03       LDA #$03
+.C:8790  A6 4C       LDX gun_draw_crosshair_counter
+.C:8792  D0 02       BNE $8796
+.C:8794  A9 06       LDA #$06
+.C:8796  85 44       STA $44
+.C:8798  A5 45       LDA $45
+.C:879a  D0 0A       BNE $87A6
+.C:879c  A9 0A       LDA #$0A
+.C:879e  85 45       STA $45
+.C:87a0  A5 47       LDA $47
+.C:87a2  49 01       EOR #$01
+.C:87a4  85 47       STA $47
+.C:87a6  A9 00       LDA #$00
+.C:87a8  85 41       STA $41
+;Enable bkg people sprite
+.C:87aa  AD 15 D0    LDA vic_sprite_enable_register
+.C:87ad  09 80       ORA #$80
+.C:87af  8D 15 D0    STA vic_sprite_enable_register
+.C:87b2  A5 4C       LDA gun_draw_crosshair_counter
+.C:87b4  F0 16       BEQ $87CC
+.C:87b6  A0 01       LDY #$01
+.C:87b8  A6 4A       LDX $4A
+.C:87ba  BD 9C 88    LDA $889C,X
+.C:87bd  38          SEC
+.C:87be  E9 40       SBC #$40
+.C:87c0  4A          LSR A
+.C:87c1  18          CLC
+.C:87c2  69 40       ADC #$40
+.C:87c4  C5 40       CMP $40
+.C:87c6  B0 02       BCS $87CA
+.C:87c8  A0 00       LDY #$00
+.C:87ca  84 43       STY $43
+.C:87cc  A6 43       LDX $43
+.C:87ce  A5 40       LDA $40
+.C:87d0  18          CLC
+.C:87d1  7D A0 88    ADC $88A0,X
+.C:87d4  85 40       STA $40
+.C:87d6  A5 41       LDA $41
+.C:87d8  7D A2 88    ADC $88A2,X
+.C:87db  85 41       STA $41
+.C:87dd  A9 62       LDA #62
+.C:87df  85 42       STA $42
+.C:87e1  A5 66       LDA $66
+.C:87e3  F0 04       BEQ $87E9
+.C:87e5  A9 3F       LDA #$3F
+.C:87e7  85 40       STA $40
+.C:87e9  A5 40       LDA $40
+.C:87eb  C9 40       CMP #$40
+.C:87ed  B0 43       BCS $8832
+.C:87ef  A5 4C       LDA gun_draw_crosshair_counter
+.C:87f1  F0 03       BEQ $87F6
+.C:87f3  4C 39 88    JMP $8839
+.C:87f6  A5 7C       LDA random_a
+.C:87f8  29 03       AND #$03
+.C:87fa  85 46       STA $46
+.C:87fc  A6 46       LDX $46
+.C:87fe  BD A4 88    LDA $88A4,X
+.C:87fe  BD A4 88    LDA $88A4,X
+.C:8801  85 47       STA $47
+.C:8803  A5 7D       LDA random_b
+.C:8805  29 01       AND #$01
+.C:8807  85 43       STA $43
+.C:8809  AA          TAX
+.C:880a  D0 05       BNE $8811
+.C:880c  A9 40       LDA #$40
+.C:880e  4C 19 88    JMP $8819
+.C:8811  A6 4A       LDX $4A
+.C:8813  BD 9C 88    LDA $889C,X
+.C:8816  38          SEC
+.C:8817  E9 01       SBC #$01
+.C:8819  85 40       STA $40
+.C:881b  A9 0F       LDA #$0F
+.C:881d  85 44       STA $44
+;Disable bkg people sprite
+.C:881f  AD 15 D0    LDA vic_sprite_enable_register
+.C:8822  29 7F       AND #$7F
+.C:8824  8D 15 D0    STA vic_sprite_enable_register
+.C:8827  A6 46       LDX $46
+.C:8829  BD A8 88    LDA $88A8,X
+.C:882c  8D 2E D0    STA vic_sprite7_color_reg
+.C:882f  4C 39 88    JMP $8839
+.C:8832  A6 4A       LDX $4A
+.C:8834  DD 9C 88    CMP $889C,X
+.C:8837  B0 B6       BCS $87EF
+;Set X position of bkg people
+.C:8839  A5 40       LDA $40
+.C:883b  8D 0E D0    STA sprite7_x_lo_register
+.C:883e  85 76       STA sprite_7_x_lo
+.C:8840  AD 10 D0    LDA sprites_x_hi_combined_reg
+.C:8843  29 7F       AND #$7F
+.C:8845  85 16       STA score_low
+.C:8847  A5 41       LDA $41
+.C:8849  0A          ASL A
+.C:884a  0A          ASL A
+.C:884b  0A          ASL A
+.C:884c  0A          ASL A
+.C:884d  0A          ASL A
+.C:884e  0A          ASL A
+.C:884f  0A          ASL A
+.C:8850  29 80       AND #$80
+.C:8852  05 16       ORA score_low
+.C:8854  8D 10 D0    STA sprites_x_hi_combined_reg
+;Set Y position of bkg people
+.C:8857  A5 42       LDA $42
+.C:8859  8D 0F D0    STA sprite7_y_register
+.C:885c  A2 07       LDX #$07
+.C:885e  20 42 98    JSR sprite_processing_1
+.C:8861  20 15 99    JSR sprite_processing_2
+.C:8864  A5 47       LDA $47
+.C:8866  0A          ASL A
+.C:8867  AA          TAX
+.C:8868  BD 8C 88    LDA $888C,X
+.C:886b  85 0E       STA $0E
+.C:886d  BD 8D 88    LDA $888D,X
+.C:8870  85 0F       STA $0F
+.C:8872  A5 43       LDA $43
+.C:8874  D0 06       BNE $887C
+.C:8876  20 D0 0B    JSR $0BD0
+.C:8879  4C 8B 88    JMP exit
+:
+.C:887c  A0 00       LDY #$00
+:
+.C:887e  B1 0E       LDA ($0E),Y
+.C:8880  39 C0 0F    AND $0FC0,Y
+.C:8883  99 C0 78    STA bkg_person_sprite_data,Y
+.C:8886  C8          INY
+.C:8887  C0 40       CPY #$40
+.C:8889  D0 F3       BNE $887E
+exit:
+.C:888b  60          RTS
+;=====================================================
+.C:88ac  A5 79       LDA $79
+.C:88ae  F0 48       BEQ $88F8
+.C:88b0  A9 00       LDA #$00
+.C:88b2  85 79       STA $79
+.C:88b4  AD 10 D0    LDA sprites_x_hi_combined_reg
+.C:88b7  29 87       AND #$87
+.C:88b9  05 78       ORA sprites_x_hi_combined
+.C:88bb  8D 10 D0    STA sprites_x_hi_combined_reg
+.C:88be  A2 07       LDX #$07
+.C:88c0  B5 6E       LDA sprite_3_x_lo,X
+.C:88c2  9D 06 D0    STA sprite3_x_lo_register,X
+.C:88c5  CA          DEX
+.C:88c6  10 F8       BPL $88C0
+.C:88c8  A5 5D       LDA $5D
+.C:88ca  C9 07       CMP #$07
+.C:88cc  D0 12       BNE $88E0
+.C:88ce  20 60 9D    JSR $9D60
+.C:88d1  4C F8 88    JMP $88F8
+.C:88d4  A0 A0       LDY #$A0
+.C:88d6  A4 A6       LDY $A6
+.C:88d8  A6 A7       LDX $A7
+.C:88da  A0 A0       LDY #$A0
+.C:88dc  A0 A0       LDY #$A0
+.C:88de  A3 A0       LAX ($A0,X)
+.C:88e0  A5 5B       LDA $5B
+.C:88e2  18          CLC
+.C:88e3  69 B0       ADC #$B0
+.C:88e5  85 03       STA $03
+.C:88e7  A9 00       LDA #$00
+.C:88e9  85 02       STA $02
+.C:88eb  A0 00       LDY #$00
+.C:88ed  B1 02       LDA ($02),Y
+.C:88ef  39 C0 0E    AND $0EC0,Y
+.C:88f2  99 00 7F    STA $7F00,Y
+.C:88f5  C8          INY
+.C:88f6  D0 F5       BNE $88ED
+.C:88f8  60          RTS
+;============================================
+handle_audio:
+.C:8925  A5 86       LDA $86
+.C:8927  F0 13       BEQ $893C
+.C:8929  38          SEC
+.C:892a  E9 01       SBC #$01
+.C:892c  0A          ASL A
+.C:892d  AA          TAX
+.C:892e  BD 41 89    LDA $8941,X
+.C:8931  A8          TAY
+.C:8932  BD 40 89    LDA $8940,X
+.C:8935  20 1C 7B    JSR setup_music
+.C:8938  A9 00       LDA #$00
+.C:893a  85 86       STA $86
+.C:893c  20 61 7B    JSR update_music
+.C:893f  60          RTS
+;===================================
+.C:8940  C0 D8       CPY #$D8
+.C:8942  B0 DA       BCS $891E
+.C:8944  F0 07       BEQ $894D
+.C:8946  E0 09       CPX #$09
+.C:8948  C0 FA       CPY #$FA
+.C:894a  00          BRK
+.C:894b  04 E0       NOOP $E0
+.C:894d  D5 30       CMP $30,X
+.C:894f  D3 A0       DCP ($A0),Y
+.C:8951  05 00       ORA $00
+.C:8953  D0 E6       BNE $893B
+.C:8955  48          PHA
+;===================================
+.C:8954  E6 48       INC $48
+.C:8956  A5 48       LDA $48
+.C:8958  29 3F       AND #$3F
+.C:895a  D0 14       BNE $8970
+.C:895c  C6 8D       DEC $8D
+.C:895e  A5 8C       LDA $8C
+.C:8960  F0 0E       BEQ $8970
+.C:8962  30 0C       BMI $8970
+.C:8964  E6 8C       INC $8C
+.C:8966  A5 8C       LDA $8C
+.C:8968  C9 80       CMP #$80
+.C:896a  D0 04       BNE $8970
+.C:896c  A9 02       LDA #$02
+.C:896e  85 8D       STA $8D
+:
+.C:8970  A5 8A       LDA $8A
+.C:8972  F0 02       BEQ $8976
+.C:8974  C6 8A       DEC $8A
+:
+.C:8976  A5 44       LDA $44
+.C:8978  F0 02       BEQ $897C
+.C:897a  C6 44       DEC $44
+:
+.C:897c  A5 45       LDA $45
+.C:897e  F0 02       BEQ $8982
+.C:8980  C6 45       DEC $45
+:
+.C:8982  20 2D 8A    JSR update_random_numbers
+.C:8985  AD 1E D0    LDA vic_sprite_to_sprite_collision_reg
+.C:8988  85 64       STA sprite_collisions
+.C:898a  A5 4C       LDA gun_draw_crosshair_counter
+.C:898c  C9 05       CMP #$05
+.C:898e  F0 03       BEQ $8993
+.C:8990  4C CB 89    JMP $89CB
+:
+.C:8993  A5 31       LDA $31
+.C:8995  D0 03       BNE $899A
+.C:8997  4C A2 89    JMP $89A2
+:
+.C:899a  C6 31       DEC $31
+.C:899c  A5 31       LDA $31
+.C:899e  C9 18       CMP #$18
+.C:89a0  B0 29       BCS $89CB
+:
+.C:89a2  A5 3A       LDA joystick_button_state
+.C:89a4  F0 25       BEQ $89CB
+.C:89a6  20 39 8A    JSR sheriff_fired_shot
+;--------------------------------------
+; Play gunshot sound
+;--------------------------------------
+.C:89a9  A9 80       LDA #$80
+.C:89ab  8D 12 D4    STA sid_voice3_control_reg
+.C:89ae  A9 30       LDA #$30
+.C:89b0  85 31       STA $31
+.C:89b2  A9 80       LDA #$80
+.C:89b4  8D 0E D4    STA sid_voice3_freq_control_low_reg
+.C:89b7  A9 10       LDA #$10
+.C:89b9  8D 0F D4    STA sid_voice3_freq_control_hi_reg
+.C:89bc  A9 19       LDA #$19
+.C:89be  8D 13 D4    STA sid_voice3_attack_decay_reg
+.C:89c1  A9 07       LDA #$07
+.C:89c3  8D 14 D4    STA sid_voice3_sustain_release_reg
+.C:89c6  A9 81       LDA #$81
+.C:89c8  8D 12 D4    STA sid_voice3_control_reg
+:
+.C:89cb  A5 32       LDA $32
+.C:89cd  D0 03       BNE l1
+.C:89cf  4C DA 89    JMP l2
+l1:
+.C:89d2  C6 32       DEC $32
+.C:89d4  A5 32       LDA $32
+.C:89d6  C9 18       CMP #$18
+.C:89d8  B0 3A       BCS l4
+l2:
+.C:89da  A5 66       LDA $66
+.C:89dc  D0 36       BNE l4
+.C:89de  A5 5B       LDA $5B
+.C:89e0  C9 13       CMP #$13
+.C:89e2  F0 04       BEQ l3
+.C:89e4  C9 19       CMP #$19
+.C:89e6  D0 2C       BNE l4
+l3:
+.C:89e8  A9 80       LDA #$80
+.C:89ea  8D 12 D4    STA sid_voice3_control_reg
+.C:89ed  A9 30       LDA #$30
+.C:89ef  85 32       STA $32
+.C:89f1  A9 80       LDA #$80
+.C:89f3  8D 0E D4    STA sid_voice3_freq_control_low_reg
+.C:89f6  A9 18       LDA #$18
+.C:89f8  8D 0F D4    STA sid_voice3_freq_control_hi_reg
+.C:89fb  A9 19       LDA #$19
+.C:89fd  8D 13 D4    STA sid_voice3_attack_decay_reg
+.C:8a00  A9 07       LDA #$07
+.C:8a00  A9 07       LDA #$07
+.C:8a02  8D 14 D4    STA sid_voice3_sustain_release_reg
+.C:8a05  A9 81       LDA #$81
+.C:8a07  8D 12 D4    STA sid_voice3_control_reg
+.C:8a0a  A5 7C       LDA random_a
+.C:8a0c  C9 40       CMP #$40
+.C:8a0e  B0 04       BCS l4
+.C:8a10  A9 FF       LDA #$FF
+.C:8a12  85 33       STA $33
+l4:
+.C:8a14  A0 00       LDY #$00
+.C:8a16  A5 31       LDA $31
+.C:8a18  05 32       ORA $32
+.C:8a1a  F0 0D       BEQ exit
+.C:8a1c  AD 81 7D    LDA $7D81
+.C:8a1f  29 FB       AND #$FB
+.C:8a21  8D 81 7D    STA $7D81
+.C:8a24  8D 17 D4    STA sid_filter_resonance_control_reg
+.C:8a27  A0 FF       LDY #$FF
+exit:
+.C:8a29  8C 50 7D    STY $7D50
+.C:8a2c  60          RTS
+;=====================================================
+update_random_numbers:
+.C:8a2d  A5 7D       LDA random_b
+.C:8a2f  0A          ASL A
+.C:8a30  45 7D       EOR random_b
+.C:8a32  0A          ASL A
+.C:8a33  0A          ASL A
+.C:8a34  26 7C       ROL random_a
+.C:8a36  26 7D       ROL random_b
+.C:8a38  60          RTS
+;=====================================================
+sheriff_fired_shot:
+;If the character's state is already "falling down", exit
+.C:8a39  A5 5F       LDA character_state
+.C:8a3b  C9 0D       CMP #$0D
+.C:8a3d  F0 4E       BEQ exit
+;Did sprite 2 (the crosshair center) collide? If not, ignore and exit
+.C:8a3f  A5 64       LDA sprite_collisions
+.C:8a41  29 04       AND #$04
+.C:8a43  F0 48       BEQ exit
+;Did sprite 7 (the background people) collide? If so, ignore and exit
+.C:8a45  A5 64       LDA sprite_collisions
+.C:8a47  29 80       AND #$80
+.C:8a49  D0 42       BNE exit
+;If we reached this point, the crosshair center collided with the person in front
+;Update character state to "falling down"
+.C:8a4b  A9 0D       LDA #$0D
+.C:8a4d  20 1C 9E    JSR set_character_state
+;--------------------------------------
+;Was this a Dalton gang member we killed?
+.C:8a50  A5 4B       LDA filename_index
+.C:8a52  C9 03       CMP #$03
+.C:8a54  D0 05       BNE check_enemy
+;It was, so one less crime committed
+.C:8a56  C6 84       DEC crimes_committed
+.C:8a58  4C 8B 8A    JMP lawful_kill_occurred
+;--------------------------------------
+check_enemy_stance:
+;Was the enemy in a shooting stance?
+.C:8a5b  A5 61       LDA character_stance
+.C:8a5d  C9 06       CMP #$06
+.C:8a5f  F0 2A       BEQ lawful_kill_occurred
+.C:8a61  C9 07       CMP #$07
+.C:8a63  F0 26       BEQ lawful_kill_occurred
+.C:8a65  C9 09       CMP #$09
+.C:8a67  F0 22       BEQ lawful_kill_occurred
+.C:8a69  C9 0C       CMP #$0C
+.C:8a6b  F0 1E       BEQ lawful_kill_occurred
+;It wasn't, increment the unlawful kills
+.C:8a6d  E6 83       INC unlawful_kills
+;Print the trigger happy message
+.C:8a6f  A9 1A       LDA #$1A				; "Aren't you trigger happy?"
+.C:8a71  A2 06       LDX #$06
+.C:8a73  20 B1 5A    JSR print_common_phrase
+;Is the doctor out of town? If so, no change in his state
+.C:8a76  A5 7B       LDA doctor_state
+.C:8a78  F0 0E       BEQ exit_2
+;Doctor is in town and we killed an innocent, make the doctor hostile
+.C:8a7a  A9 02       LDA #$02
+.C:8a7c  85 7B       STA doctor_state
+;If we killed the doctor, set him out of town
+.C:8a7e  A5 4B       LDA filename_index
+.C:8a80  C9 06       CMP #$06
+.C:8a82  D0 04       BNE exit_2
+.C:8a84  A9 00       LDA #$00
+.C:8a86  85 7B       STA doctor_state
+exit_2:
+.C:8a88  4C 8D 8A    JMP exit
+lawful_kill_occurred:
+.C:8a8b  E6 81       INC lawful_kills
+exit:
+.C:8a8d  60          RTS
+;=====================================================
+port_a_direction = $21
+port_b_direction = $22
+
+scan_input_controllers:
+;Save direction values, set direction registers to #00 (all bits selected for input)
+.C:8a8e  AD 02 DC    LDA cia1_port_a_data_direction_reg
+.C:8a91  85 21       STA port_a_direction
+.C:8a93  A9 00       LDA #$00
+.C:8a95  8D 02 DC    STA cia1_port_a_data_direction_reg
+.C:8a98  AD 03 DC    LDA cia1_port_b_data_direction_reg
+.C:8a9b  85 22       STA port_b_direction
+.C:8a9d  A9 00       LDA #$00
+.C:8a9f  8D 03 DC    STA cia1_port_b_data_direction_reg
+;Read port A state (used for joystick 2, among other things)
+.C:8aa2  AD 00 DC    LDA cia1_port_a_data_register
+;Select only bits 4-0 (which are used for the joystick 2 states)
+.C:8aa5  29 1F       AND #$1F
+;A bit of 0 indicates the specific switch has been pressed (button or joystick direction)
+;A bit of 1 indicates the opposite
+;To make it more intuitive and easier to process, flip the bits by XOR'ing the bitmask with itself
+.C:8aa7  49 1F       EOR #$1F
+.C:8aa9  85 39       STA joystick_direction_state
+;Select only bit 4, which is used for the joystick button
+.C:8aab  29 10       AND #$10
+.C:8aad  85 3A       STA joystick_button_state
+;For the bitmask, select only the direction bits
+.C:8aaf  A5 39       LDA joystick_direction_state
+.C:8ab1  29 0F       AND #$0F
+.C:8ab3  85 39       STA joystick_direction_state
+;Restore original port direction values
+.C:8ab5  A5 21       LDA port_a_direction
+.C:8ab7  8D 02 DC    STA cia1_port_a_data_direction_reg
+.C:8aba  A5 22       LDA port_b_direction
+.C:8abc  8D 03 DC    STA cia1_port_b_data_direction_reg
+;Do we have any button or direction active?
+.C:8abf  A5 39       LDA joystick_direction_state
+.C:8ac1  05 3A       ORA joystick_button_state
+;If not, exit right now
+.C:8ac3  F0 0E       BEQ exit_2
+;???
+.C:8ac5  A5 8C       LDA $8C
+.C:8ac7  10 06       BPL exit
+;Restart the game
+.C:8ac9  A2 FF       LDX #$FF
+.C:8acb  9A          TXS
+.C:8acc  4C 09 80    JMP restart_game
+exit:
+.C:8acf  A9 00       LDA #$00
+.C:8ad1  85 8C       STA $8C
+exit_2:
+.C:8ad3  60          RTS
+;=====================================================
+handle_click_on_dialogue_phrase:
+.C:8ad4  A5 39       LDA joystick_direction_state
+.C:8ad6  D0 02       BNE check_holster_timer
+.C:8ad8  85 2D       STA gun_holstered_timer
+check_holster_timer:
+.C:8ada  A5 2D       LDA gun_holstered_timer
+.C:8adc  F0 05       BEQ $8AE3
+.C:8ade  C6 2D       DEC gun_holstered_timer
+exit_3:
+.C:8ae0  4C BB 8B    JMP exit_2
+:
+.C:8ae3  A5 2F       LDA selected_line_display_timer
+.C:8ae5  D0 F9       BNE exit_3
+.C:8ae7  A5 30       LDA character_line_display_timer
+.C:8ae9  D0 F5       BNE exit_3
+.C:8aeb  A5 4C       LDA gun_draw_crosshair_counter
+.C:8aed  D0 F1       BNE exit_3
+.C:8aef  A5 89       LDA $89
+.C:8af1  F0 21       BEQ $8B14
+.C:8af3  A5 3A       LDA joystick_button_state
+.C:8af5  F0 1D       BEQ $8B14
+;Subtract the selected phrase index from the current base phrase index?
+.C:8af7  A5 4E       LDA $4E
+.C:8af9  38          SEC
+.C:8afa  E5 4F       SBC phrase_index
+;Consider its lowest 2 bits
+.C:8afc  29 03       AND #$03
+;Map the 2 bits (range 0-3) to a range of 1-4
+;Store the number in the 1-4 range on the current phrase tier
+.C:8afe  D0 03       BNE check_for_1
+.C:8b00  4C BE 8B    JMP store_1_on_current_phrase_tier
+check_for_1:
+.C:8b03  C9 01       CMP #$01
+.C:8b05  D0 03       BNE check_for_2
+.C:8b07  4C C7 8B    JMP store_2_on_current_phrase_tier
+check_for_2:
+.C:8b0a  C9 02       CMP #$02
+.C:8b0c  D0 03       BNE store_a_4
+.C:8b0e  4C D0 8B    JMP store_3_on_current_phrase_tier
+store_a_4:
+.C:8b11  4C D9 8B    JMP store_4_on_current_phrase_tier
+;=====================================================
+.C:8b14  A6 39       LDX joystick_direction_state
+.C:8b16  A5 4E       LDA $4E
+.C:8b18  85 21       STA $21
+.C:8b1a  18          CLC
+.C:8b1b  7D 15 89    ADC crosshair_delta_y_for_direction,X
+.C:8b1e  10 44       BPL $8B64
+.C:8b20  A9 01       LDA #$01
+.C:8b22  85 4C       STA gun_draw_crosshair_counter
+.C:8b24  A9 00       LDA #$00
+.C:8b26  85 3C       STA crosshair_sprite_x_hi
+.C:8b28  A9 A0       LDA #$A0
+.C:8b2a  85 3B       STA crosshair_sprite_x_lo
+.C:8b2c  A9 B2       LDA #$B2
+.C:8b2e  85 3D       STA crosshair_sprite_y
+.C:8b30  A9 E0       LDA #$E0
+.C:8b32  8D F9 5F    STA $5FF9
+.C:8b35  A9 00       LDA #$00
+.C:8b37  8D 28 D0    STA vic_sprite1_color_reg
+;Enable crosshair sprites
+.C:8b3a  AD 15 D0    LDA vic_sprite_enable_register
+.C:8b3d  09 06       ORA #$06
+.C:8b3f  8D 15 D0    STA vic_sprite_enable_register
+.C:8b42  A5 21       LDA $21
+.C:8b44  C9 FF       CMP #$FF
+.C:8b46  F0 15       BEQ $8B5D
+.C:8b48  0A          ASL A
+.C:8b49  AA          TAX
+.C:8b4a  BD B3 8B    LDA $8BB3,X
+.C:8b4d  85 02       STA $02
+.C:8b4f  BD B4 8B    LDA $8BB4,X
+.C:8b52  85 03       STA $03
+.C:8b54  A0 27       LDY #$27
+.C:8b56  A9 0F       LDA #$0F
+.C:8b58  91 02       STA ($02),Y
+.C:8b5a  88          DEY
+.C:8b5b  10 FB       BPL $8B58
+.C:8b5d  A9 FF       LDA #$FF
+.C:8b5f  85 4E       STA $4E
+.C:8b61  4C BB 8B    JMP exit_2
+.C:8b64  C9 04       CMP #$04
+.C:8b66  90 02       BCC $8B6A
+.C:8b68  A9 03       LDA #$03
+.C:8b6a  85 4E       STA $4E
+.C:8b6c  C5 21       CMP $21
+.C:8b6e  F0 4B       BEQ exit_2
+.C:8b70  0A          ASL A
+.C:8b71  AA          TAX
+.C:8b72  BD B3 8B    LDA $8BB3,X
+.C:8b75  85 02       STA $02
+.C:8b77  BD B4 8B    LDA $8BB4,X
+.C:8b7a  85 03       STA $03
+.C:8b7c  A5 4C       LDA gun_draw_crosshair_counter
+.C:8b7e  D0 09       BNE $8B89
+.C:8b80  A0 27       LDY #$27
+.C:8b82  A9 0E       LDA #$0E
+.C:8b84  91 02       STA ($02),Y
+.C:8b86  88          DEY
+.C:8b87  10 FB       BPL $8B84
+.C:8b89  A5 21       LDA $21
+.C:8b8b  C9 FF       CMP #$FF
+.C:8b8d  F0 15       BEQ $8BA4
+.C:8b8f  0A          ASL A
+.C:8b90  AA          TAX
+.C:8b91  BD B3 8B    LDA $8BB3,X
+.C:8b94  85 02       STA $02
+.C:8b96  BD B4 8B    LDA $8BB4,X
+.C:8b99  85 03       STA $03
+.C:8b9b  A0 27       LDY #$27
+.C:8b9d  A9 0F       LDA #$0F
+.C:8b9f  91 02       STA ($02),Y
+.C:8ba1  88          DEY
+.C:8ba2  10 FB       BPL $8B9F
+.C:8ba4  A9 01       LDA #$01
+.C:8ba6  A6 38       LDX current_tier
+.C:8ba8  E0 03       CPX #$03
+.C:8baa  F0 02       BEQ $8BAE
+.C:8bac  A9 20       LDA #$20
+.C:8bae  85 2D       STA gun_holstered_timer
+.C:8bb0  4C BB 8B    JMP exit_2
+;---------------------------------
+.C:8bb3  48 DB 70 DB 98 DB C0 DB
+exit_2:
+.C:8bbb  4C 37 8C    JMP exit
+;---------------------------------
+;Store a #01/#02/#03/#04 value on the variable indexed by .X
+;---------------------------------
+store_1_on_current_phrase_tier:
+.C:8bbe  A6 38       LDX current_tier
+.C:8bc0  A9 01       LDA #$01
+.C:8bc2  95 34       STA selected_phrase_tiers,X
+.C:8bc4  4C DF 8B    JMP clear_other_lines
+store_2_on_current_phrase_tier:
+.C:8bc7  A6 38       LDX current_tier
+.C:8bc9  A9 02       LDA #$02
+.C:8bcb  95 34       STA selected_phrase_tiers,X
+.C:8bcd  4C DF 8B    JMP clear_other_lines
+store_3_on_current_phrase_tier:
+.C:8bd0  A6 38       LDX current_tier
+.C:8bd2  A9 03       LDA #$03
+.C:8bd4  95 34       STA selected_phrase_tiers,X
+.C:8bd6  4C DF 8B    JMP clear_other_lines
+store_4_on_current_phrase_tier:
+.C:8bd9  A6 38       LDX current_tier
+.C:8bdb  A9 04       LDA #$04
+.C:8bdd  95 34       STA selected_phrase_tiers,X
+;---------------------------------
+;Clear lines that were not selected
+;---------------------------------
+clear_other_lines:
+.C:8bdf  18          CLC
+.C:8be0  65 4F       ADC phrase_index
+;Take last 2 bits as line index into .Y
+.C:8be2  29 03       AND #$03
+.C:8be4  A8          TAY
+;Is it line 1? If so, don't clear line 1
+.C:8be5  C0 01       CPY #$01
+.C:8be7  F0 0A       BEQ check_line_2
+.C:8be9  A2 28       LDX #$28
+clear_line1_loop:
+.C:8beb  A9 20       LDA #$20
+.C:8bed  9D 47 07    STA line1_text_data,X
+.C:8bf0  CA          DEX
+.C:8bf1  D0 F8       BNE clear_line1_loops
+check_line_2:
+.C:8bf3  C0 02       CPY #$02
+.C:8bf5  F0 0A       BEQ check_line_3
+.C:8bf7  A2 28       LDX #$28
+clear_line2_loop:
+.C:8bf9  A9 20       LDA #$20
+.C:8bfb  9D 6F 07    STA line2_text_data,X
+.C:8bfe  CA          DEX
+.C:8bff  D0 F8       BNE clear_line2_loop
+check_line_3:
+.C:8c01  C0 03       CPY #$03
+.C:8c03  F0 0A       BEQ check_line_0
+.C:8c05  A2 28       LDX #$28
+clear_line3_loop:
+.C:8c07  A9 20       LDA #$20
+.C:8c09  9D 97 07    STA line3_text_data,X
+.C:8c0c  CA          DEX
+.C:8c0d  D0 F8       BNE clear_line3_loop
+check_line_0:
+.C:8c0f  C0 00       CPY #$00
+.C:8c11  F0 0A       BEQ $8C1D
+.C:8c13  A2 28       LDX #$28
+clear_line0_loop:
+.C:8c15  A9 20       LDA #$20
+.C:8c17  9D BF 07    STA line0_text_data,X
+.C:8c1a  CA          DEX
+.C:8c1b  D0 F8       BNE clear_line0_loop
+.C:8c1d  A9 40       LDA #$40
+.C:8c1f  85 2F       STA selected_line_display_timer
+.C:8c21  E6 38       INC current_tier
+;Did we reach the last tier? If not, exit
+.C:8c23  A5 38       LDA current_tier
+.C:8c25  C9 04       CMP #$04
+.C:8c27  D0 0E       BNE exit
+;We reached the last tier
+.C:8c29  A9 00       LDA #$00
+.C:8c2b  85 2F       STA selected_line_display_timer
+;Reset the phrase selections and current tier
+.C:8c2d  85 38       STA current_tier
+.C:8c2f  85 34       STA selected_phrase_tiers
+.C:8c31  85 35       STA selected_phrase_tiers + 1
+.C:8c33  85 36       STA selected_phrase_tiers + 2
+.C:8c35  85 37       STA selected_phrase_tiers + 3
+exit:
+.C:8c37  60          RTS
+;=====================================================
+.C:8c38  EA          NOP
+.C:8c39  40          RTI
+;=====================================================
+src_base = $0A
+dest_base = $0C
+tier3_index = $21
+tier2_index = $22
+tier1_index = $23
+
+handle_dialogue:
+;Set character state to #16 (talking)
+.C:8c3a  A9 16       LDA #$16
+.C:8c3c  20 1C 9E    JSR set_character_state
+.C:8c3f  A9 00       LDA #$00
+.C:8c41  85 21       STA tier3_index
+.C:8c43  85 22       STA tier2_index
+.C:8c45  85 23       STA tier1_index
+.C:8c47  A5 36       LDA selected_phrase_tiers + 2
+.C:8c49  F0 0D       BEQ l1
+.C:8c4b  85 21       STA tier3_index
+.C:8c4d  A5 35       LDA selected_phrase_tiers + 1
+.C:8c4f  85 22       STA tier2_index
+.C:8c51  A5 34       LDA selected_phrase_tiers
+.C:8c53  85 23       STA tier1_index
+.C:8c55  4C 69 8C    JMP l3
+l1:
+.C:8c58  A5 35       LDA selected_phrase_tiers + 1
+.C:8c5a  F0 09       BEQ l2
+.C:8c5c  85 21       STA tier3_index
+.C:8c5e  A5 34       LDA selected_phrase_tiers
+.C:8c60  85 22       STA tier2_index
+.C:8c62  4C 69 8C    JMP l3
+l2:
+.C:8c65  A5 34       LDA selected_phrase_tiers
+.C:8c67  85 21       STA tier3_index
+;---------------------------------
+l3:
+sheriff_line_index = $26
+;sheriff_line_index = tier3_index + tier2_index * 4 + tier1_index * 16
+.C:8c69  A5 21       LDA tier3_index
+.C:8c6b  85 26       STA sheriff_line_index
+.C:8c6d  A5 22       LDA tier2_index
+.C:8c6f  0A          ASL A
+.C:8c70  0A          ASL A
+.C:8c71  18          CLC
+.C:8c72  65 26       ADC sheriff_line_index
+.C:8c74  85 26       STA sheriff_line_index
+.C:8c76  A5 23       LDA tier1_index
+.C:8c78  0A          ASL A
+.C:8c79  0A          ASL A
+.C:8c7a  0A          ASL A
+.C:8c7b  0A          ASL A
+.C:8c7c  18          CLC
+.C:8c7d  65 26       ADC sheriff_line_index
+.C:8c7f  85 26       STA sheriff_line_index
+;---------------------------------
+;Have we reached the last tier of conversation?
+;If so, continue - otherwise, skip to the phrase unpacking and printing
+.C:8c81  A6 38       LDX current_tier
+.C:8c83  E0 03       CPX #$03
+.C:8c85  D0 58       BNE unpack_phrase
+;---------------------------------
+; Last tier of conversation reached
+;---------------------------------
+;Set .Y to sheriff_line_index - #15
+.C:8c87  38          SEC
+.C:8c88  E9 15       SBC #$15
+.C:8c8a  A8          TAY
+;Copy $9E3F to $02/03 (the start of the scene data buffer)
+scene_data_ptr = $02
+.C:8c8b  A2 00       LDX #$00
+.C:8c8d  BD 27 8D    LDA $8D27,X
+.C:8c90  85 02       STA <scene_data_ptr
+.C:8c92  BD 28 8D    LDA $8D28,X
+.C:8c95  85 03       STA >scene_data_ptr
+;---------------------------------
+;Did we interact with any of the women?
+;---------------------------------
+.C:8c97  A6 4B       LDX filename_index
+.C:8c99  E0 02       CPX #$02
+.C:8c9b  F0 08       BEQ interaction_with_woman
+.C:8c9d  E0 05       CPX #$05
+.C:8c9f  F0 04       BEQ interaction_with_woman
+.C:8ca1  E0 0A       CPX #$0A
+;If not, skip to the man section
+.C:8ca3  D0 1B       BNE interaction_with_man
+;---------------------------------
+interaction_with_woman:
+;Get dialogue outcome
+.C:8ca5  B1 02       LDA (scene_data_ptr),Y
+;Divide by 32
+.C:8ca7  4A          LSR A
+.C:8ca8  4A          LSR A
+.C:8ca9  4A          LSR A
+.C:8caa  4A          LSR A
+.C:8cab  4A          LSR A
+;Apply romance progress number for this dialogue
+.C:8cac  AA          TAX
+.C:8cad  BD 17 8D    LDA romance_progress_for_dialogue,X
+.C:8cb0  18          CLC
+.C:8cb1  65 80       ADC romance_progress
+.C:8cb3  85 80       STA romance_progress
+;Apply authority progress for this dialogue
+.C:8cb5  BD 1F 8D    LDA authority_progress_for_dialogue,X
+.C:8cb8  18          CLC
+.C:8cb9  65 7E       ADC authority_maintained
+.C:8cbb  85 7E       STA authority_maintained
+.C:8cbd  4C D8 8C    JMP set_state_from_dialogue
+;---------------------------------
+interaction_with_man:
+;Get dialogue outcome
+.C:8cc0  B1 02       LDA (scene_data_ptr),Y
+;Divide by 32
+.C:8cc2  4A          LSR A
+.C:8cc3  4A          LSR A
+.C:8cc4  4A          LSR A
+.C:8cc5  4A          LSR A
+.C:8cc6  4A          LSR A
+;Save outcome byte in .X
+.C:8cc7  AA          TAX
+;Apply authority progress for this dialogue outcome
+.C:8cc8  18          CLC
+.C:8cc9  65 7E       ADC authority_maintained
+.C:8ccb  85 7E       STA authority_maintained
+;Did we interact with the doctor?
+.C:8ccd  A5 4B       LDA filename_index
+.C:8ccf  C9 06       CMP #$06
+;If not, skip
+.C:8cd1  D0 05       BNE set_state_from_dialogue
+;---------------------------------
+;Set the new doctor's state for this dialogue
+.C:8cd3  BD 0F 8D    LDA doctor_state_for_dialogue,X
+.C:8cd6  85 7B       STA doctor_state
+;---------------------------------
+set_state_from_dialogue:
+;Get dialogue outcome
+.C:8cd8  B1 02       LDA (scene_data_ptr),Y
+;Use bits 4-0 of the dialogue outcome as character state
+.C:8cda  29 1F       AND #$1F
+.C:8cdc  20 1C 9E    JSR set_character_state
+unpack_phrase:
+.C:8cdf  A5 26       LDA sheriff_line_index
+.C:8ce1  0A          ASL A
+.C:8ce2  AA          TAX
+.C:8ce3  BD 4C 5B    LDA <phrase_pointers,X
+.C:8ce6  85 0A       STA <src_base
+.C:8ce8  BD 4D 5B    LDA >phrase_pointers,X
+.C:8ceb  85 0B       STA >src_base
+.C:8ced  A9 F8       LDA #$F8
+.C:8cef  85 0C       STA <dest_base
+.C:8cf1  A9 06       LDA #$06
+.C:8cf3  85 0D       STA >dest_base
+.C:8cf5  20 29 8D    JSR unpack_text
+;---------------------------------
+;Clear the phrase area
+;Fill it with spaces
+.C:8cf8  A2 A0       LDX #$A0
+.C:8cfa  A9 20       LDA #$20
+loop:
+.C:8cfc  9D 47 07    STA $0747,X
+.C:8cff  CA          DEX
+.C:8d00  D0 FA       BNE loop
+;---------------------------------
+;Are we in the last tier? If so, use a display timer value of #60
+;Otherwise, use a value of #02
+.C:8d02  A2 60       LDX #$60
+.C:8d04  A5 38       LDA current_tier
+.C:8d06  C9 03       CMP #$03
+.C:8d08  D0 02       BNE set_timer
+.C:8d0a  A2 02       LDX #$02
+set_timer:
+.C:8d0c  86 30       STX character_line_display_timer
+.C:8d0e  60          RTS
+;=====================================================
+alphabet = $8e01
+src_base = $0A
+dest_base = $0C
+src_index = $29
+dest_index = $27
+bitmask = $28
+
+unpack_text:
+.C:8d29  A0 00       LDY #$00
+.C:8d2b  84 29       STY src_index
+.C:8d2d  84 27       STY dest_index
+group_start:
+;Most significant 5 bits
+.C:8d2f  A4 29       LDY src_index
+.C:8d31  B1 0A       LDA (src_base),Y
+.C:8d33  4A          LSR A
+.C:8d34  4A          LSR A
+.C:8d35  4A          LSR A
+.C:8d36  AA          TAX
+.C:8d37  BD 01 8E    LDA alphabet,X
+.C:8d3a  A4 27       LDY dest_index
+.C:8d3c  91 0C       STA (dest_base),Y
+.C:8d3e  E6 27       INC dest_index
+;----------------------------------------------
+;Lowest 3 bits -> bitmask
+.C:8d40  A4 29       LDY src_index
+.C:8d42  B1 0A       LDA (src_base),Y
+.C:8d44  29 07       AND #$07
+.C:8d46  85 28       STA bitmask
+.C:8d48  E6 29       INC src_index
+.C:8d4a  A4 29       LDY src_index
+.C:8d4c  B1 0A       LDA (src_base),Y
+.C:8d4e  2A          ROL A
+.C:8d4f  26 28       ROL bitmask
+.C:8d51  2A          ROL A
+.C:8d52  26 28       ROL bitmask
+;Combined with 2 MSBits of next source byte
+.C:8d54  A6 28       LDX bitmask
+.C:8d56  BD 01 8E    LDA alphabet,X
+.C:8d59  A4 27       LDY dest_index
+.C:8d5b  91 0C       STA (dest_base),Y
+.C:8d5d  E6 27       INC dest_index
+;----------------------------------------------
+;Next 5 bits (bits 5-1)
+.C:8d5f  A4 29       LDY src_index
+.C:8d61  B1 0A       LDA (src_base),Y
+.C:8d63  29 3E       AND #$3E
+.C:8d65  4A          LSR A
+.C:8d66  AA          TAX
+.C:8d67  BD 01 8E    LDA alphabet,X
+.C:8d6a  A4 27       LDY dest_index
+.C:8d6c  91 0C       STA (dest_base),Y
+.C:8d6e  E6 27       INC dest_index
+;----------------------------------------------
+;Bit 0 + bits 7-4 of next source byte
+.C:8d70  A4 29       LDY src_index
+.C:8d72  B1 0A       LDA (src_base),Y
+.C:8d74  29 01       AND #$01
+.C:8d76  85 28       STA bitmask
+.C:8d78  E6 29       INC src_index
+.C:8d7a  A4 29       LDY src_index
+.C:8d7c  B1 0A       LDA (src_base),Y
+.C:8d7e  2A          ROL A
+.C:8d7f  26 28       ROL bitmask
+.C:8d81  2A          ROL A
+.C:8d82  26 28       ROL bitmask
+.C:8d84  2A          ROL A
+.C:8d85  26 28       ROL bitmask
+.C:8d87  2A          ROL A
+.C:8d88  26 28       ROL bitmask
+.C:8d8a  A6 28       LDX bitmask
+.C:8d8c  BD 01 8E    LDA alphabet,X
+.C:8d8f  A4 27       LDY dest_index
+.C:8d91  91 0C       STA (dest_base),Y
+.C:8d93  E6 27       INC dest_index
+;----------------------------------------------
+;Bits 3-0 + bit 7 of next byte
+.C:8d95  A4 29       LDY src_index
+.C:8d97  B1 0A       LDA (src_base),Y
+.C:8d99  29 0F       AND #$0F
+.C:8d9b  85 28       STA bitmask
+.C:8d9d  E6 29       INC src_index
+.C:8d9f  A4 29       LDY src_index
+.C:8da1  B1 0A       LDA (src_base),Y
+.C:8da3  2A          ROL A
+.C:8da4  26 28       ROL bitmask
+.C:8da6  A6 28       LDX bitmask
+.C:8da8  BD 01 8E    LDA alphabet,X
+.C:8dab  A4 27       LDY dest_index
+.C:8dad  91 0C       STA (dest_base),Y
+.C:8daf  E6 27       INC dest_index
+;----------------------------------------------
+;Bits 6-2 
+.C:8db1  A4 29       LDY src_index
+.C:8db3  B1 0A       LDA (src_base),Y
+.C:8db5  29 7C       AND #$7C
+.C:8db7  4A          LSR A
+.C:8db8  4A          LSR A
+.C:8db9  AA          TAX
+.C:8dba  BD 01 8E    LDA alphabet,X
+.C:8dbd  A4 27       LDY dest_index
+.C:8dbf  91 0C       STA (dest_base),Y
+.C:8dc1  E6 27       INC dest_index
+;----------------------------------------------
+;Bits 1-0 and bits 7-5 of next byte
+.C:8dc3  A4 29       LDY src_index
+.C:8dc5  B1 0A       LDA (src_base),Y
+.C:8dc7  29 03       AND #$03
+.C:8dc9  85 28       STA bitmask
+.C:8dcb  E6 29       INC src_index
+.C:8dcd  A4 29       LDY src_index
+.C:8dcf  B1 0A       LDA (src_base),Y
+.C:8dd1  2A          ROL A
+.C:8dd2  26 28       ROL bitmask
+.C:8dd4  2A          ROL A
+.C:8dd5  26 28       ROL bitmask
+.C:8dd7  2A          ROL A
+.C:8dd8  26 28       ROL bitmask
+.C:8dda  A6 28       LDX bitmask
+.C:8ddc  BD 01 8E    LDA alphabet,X
+.C:8ddf  A4 27       LDY dest_index
+.C:8de1  91 0C       STA (dest_base),Y
+.C:8de3  E6 27       INC dest_index
+;----------------------------------------------
+;Bits 4-0
+.C:8de5  A4 29       LDY src_index
+.C:8de7  B1 0A       LDA (src_base),Y
+.C:8de9  29 1F       AND #$1F
+.C:8deb  AA          TAX
+.C:8dec  BD 01 8E    LDA alphabet,X
+.C:8def  A4 27       LDY dest_index
+.C:8df1  91 0C       STA (dest_base),Y
+.C:8df3  E6 27       INC dest_index
+.C:8df5  E6 29       INC src_index
+;----------------------------------------------
+;Loop until source is exhausted
+.C:8df7  A4 29       LDY src_index
+.C:8df9  C0 19       CPY #$19
+.C:8dfb  F0 03       BEQ $8E00
+.C:8dfd  4C 2F 8D    JMP group_start
+.C:8e00  60          RTS
+;=====================================================
+alphabet = $8e01
+.C:8e01  20 41 42 43 44 45 46 47 48 49 4A 4B 4C 4D 4E 4F 50 51 52 53 54 55 56 57 58 59 5A 
+
+.C:8e1c 21    EOR $215A,Y
+.C:8e1d  27 2C       RLA $2C
+.C:8e1f  2E 3F A5    ROL $A53F
+.C:8e22  38          SEC
+;=====================================================
+draw_dialogue_phrases:
+.C:8e21  A5 38       LDA $38
+.C:8e23  C9 03       CMP #$03
+.C:8e25  D0 07       BNE $8E2E
+.C:8e27  A9 00       LDA #$00
+.C:8e29  85 89       STA $89
+.C:8e2b  4C C8 8E    JMP $8EC8
+.C:8e2e  A9 FF       LDA #$FF
+.C:8e30  85 89       STA $89
+.C:8e32  A5 0A       LDA <src_base
+.C:8e34  18          CLC
+.C:8e35  69 19       ADC #$19
+.C:8e37  85 0A       STA <src_base
+.C:8e39  A5 0B       LDA >src_base
+.C:8e3b  69 00       ADC #$00
+.C:8e3d  85 0B       STA >src_base
+.C:8e3f  A5 48       LDA $48
+.C:8e41  29 03       AND #$03
+.C:8e43  85 4F       STA phrase_index
+.C:8e45  18          CLC
+.C:8e46  69 01       ADC #$01
+.C:8e48  29 03       AND #$03
+.C:8e4a  85 50       STA $50
+.C:8e4c  18          CLC
+.C:8e4d  69 01       ADC #$01
+.C:8e4f  29 03       AND #$03
+.C:8e51  85 51       STA $51
+.C:8e53  18          CLC
+.C:8e54  69 01       ADC #$01
+.C:8e56  29 03       AND #$03
+.C:8e58  85 52       STA $52
+.C:8e5a  A6 4F       LDX phrase_index
+.C:8e5c  BD C0 8E    LDA $8EC0,X
+.C:8e5f  85 0C       STA <dest_base
+.C:8e61  BD C4 8E    LDA $8EC4,X
+.C:8e64  85 0D       STA >dest_base
+.C:8e66  20 29 8D    JSR unpack_text
+.C:8e69  A5 0A       LDA <src_base
+.C:8e6b  18          CLC
+.C:8e6c  69 19       ADC #$19
+.C:8e6e  85 0A       STA <src_base
+.C:8e70  A5 0B       LDA >src_base
+.C:8e72  69 00       ADC #$00
+.C:8e74  85 0B       STA >src_base
+.C:8e76  A6 50       LDX $50
+.C:8e78  BD C0 8E    LDA $8EC0,X
+.C:8e7b  85 0C       STA <dest_base
+.C:8e7d  BD C4 8E    LDA $8EC4,X
+.C:8e80  85 0D       STA >dest_base
+.C:8e82  20 29 8D    JSR unpack_text
+.C:8e85  A5 0A       LDA <src_base
+.C:8e87  18          CLC
+.C:8e88  69 19       ADC #$19
+.C:8e8a  85 0A       STA <src_base
+.C:8e8c  A5 0B       LDA >src_base
+.C:8e8e  69 00       ADC #$00
+.C:8e90  85 0B       STA >src_base
+.C:8e92  A6 51       LDX $51
+.C:8e94  BD C0 8E    LDA $8EC0,X
+.C:8e97  85 0C       STA <dest_base
+.C:8e99  BD C4 8E    LDA $8EC4,X
+.C:8e9c  85 0D       STA >dest_base
+.C:8e9e  20 29 8D    JSR unpack_text
+.C:8ea1  A5 0A       LDA <src_base
+.C:8ea3  18          CLC
+.C:8ea4  69 19       ADC #$19
+.C:8ea6  85 0A       STA <src_base
+.C:8ea8  A5 0B       LDA >src_base
+.C:8eaa  69 00       ADC #$00
+.C:8eac  85 0B       STA >src_base
+.C:8eae  A6 52       LDX $52
+.C:8eb0  BD C0 8E    LDA $8EC0,X
+.C:8eb3  85 0C       STA <dest_base
+.C:8eb5  BD C4 8E    LDA $8EC4,X
+.C:8eb8  85 0D       STA >dest_base
+.C:8eba  20 29 8D    JSR unpack_text
+.C:8ebd  4C C8 8E    JMP $8EC8
+.C:8ec0  48          PHA
+.C:8ec1  70 98       BVS $8E5B
+.C:8ec3  C0 07       CPY #$07
+.C:8ec5  07 07       SLO $07
+.C:8ec7  07 A9       SLO $A9
+.C:8ec9  00          BRK
+.C:8eca  0A          ASL A
+.C:8ecb  AA          TAX
+.C:8ecc  BD B3 8B    LDA $8BB3,X
+.C:8ecf  85 02       STA $02
+.C:8ed1  BD B4 8B    LDA $8BB4,X
+.C:8ed4  85 03       STA $03
+.C:8ed6  A5 4C       LDA gun_draw_crosshair_counter
+.C:8ed8  D0 09       BNE $8EE3
+.C:8eda  A0 27       LDY #$27
+.C:8edc  A9 0E       LDA #$0E
+.C:8ede  91 02       STA ($02),Y
+.C:8ee0  88          DEY
+.C:8ee1  10 FB       BPL $8EDE
+.C:8ee3  A5 4E       LDA $4E
+.C:8ee5  F0 19       BEQ $8F00
+.C:8ee7  C9 FF       CMP #$FF
+.C:8ee9  F0 15       BEQ $8F00
+.C:8eeb  0A          ASL A
+.C:8eec  AA          TAX
+.C:8eed  BD B3 8B    LDA $8BB3,X
+.C:8ef0  85 02       STA $02
+.C:8ef2  BD B4 8B    LDA $8BB4,X
+.C:8ef5  85 03       STA $03
+.C:8ef7  A0 27       LDY #$27
+.C:8ef9  A9 0F       LDA #$0F
+.C:8efb  91 02       STA ($02),Y
+.C:8efd  88          DEY
+.C:8efe  10 FB       BPL $8EFB
+.C:8f00  A9 00       LDA #$00
+.C:8f00  A9 00       LDA #$00
+.C:8f02  85 4E       STA $4E
+.C:8f04  60          RTS
+;=========================================
+temp = $16
+
+update_character:
+.C:8f27  A5 88       LDA $88
+.C:8f29  F0 03       BEQ $8F2E
+.C:8f2b  4C B5 57    JMP game_over
+:
+.C:8f2e  A5 4A       LDA $4A
+.C:8f30  F0 03       BEQ $8F35
+.C:8f32  4C 90 8F    JMP $8F90
+:
+.C:8f35  A5 54       LDA $54
+.C:8f37  F0 0E       BEQ $8F47
+.C:8f39  A5 53       LDA $53
+.C:8f3b  C9 10       CMP #$10
+.C:8f3d  B0 08       BCS $8F47
+.C:8f3f  A9 08       LDA #$08
+.C:8f41  85 8B       STA $8B
+.C:8f43  A9 00       LDA #$00
+.C:8f45  85 8A       STA $8A
+:
+.C:8f47  A5 8A       LDA $8A
+.C:8f49  D0 45       BNE $8F90
+.C:8f4b  A5 8B       LDA $8B
+.C:8f4d  F0 41       BEQ $8F90
+.C:8f4f  A5 8B       LDA $8B
+.C:8f51  0A          ASL A
+.C:8f52  AA          TAX
+.C:8f53  BD 15 8F    LDA $8F15,X
+.C:8f56  85 16       STA temp
+.C:8f58  BD 16 8F    LDA $8F16,X
+.C:8f5b  85 17       STA $17
+.C:8f5d  A2 07       LDX #$07
+:
+.C:8f5f  BD 34 1A    LDA $1A34,X
+.C:8f62  25 16       AND temp
+.C:8f64  05 17       ORA $17
+.C:8f66  9D F8 6A    STA $6AF8,X
+.C:8f69  BD D4 1A    LDA $1AD4,X
+.C:8f6c  25 16       AND temp
+.C:8f6e  05 17       ORA $17
+.C:8f70  9D 38 6C    STA $6C38,X
+.C:8f73  BD 74 1B    LDA $1B74,X
+.C:8f76  25 16       AND temp
+.C:8f78  05 17       ORA $17
+.C:8f7a  9D 78 6D    STA $6D78,X
+.C:8f7d  BD 14 1C    LDA $1C14,X
+.C:8f80  25 16       AND temp
+.C:8f82  05 17       ORA $17
+.C:8f84  9D B8 6E    STA $6EB8,X
+.C:8f87  CA          DEX
+.C:8f88  10 D5       BPL $8F5F
+.C:8f8a  C6 8B       DEC $8B
+.C:8f8c  A9 10       LDA #$10
+.C:8f8e  85 8A       STA $8A
+:
+.C:8f90  A5 5C       LDA $5C
+.C:8f92  F0 03       BEQ $8F97
+.C:8f94  4C 41 98    JMP exit
+:
+.C:8f97  A5 61       LDA character_stance
+.C:8f99  F0 07       BEQ handle_state
+.C:8f9b  A5 60       LDA $60
+.C:8f9d  F0 03       BEQ handle_state
+.C:8f9f  4C B7 96    JMP animate_character
+handle_state:
+;Setup character update handler based on the current state
+.C:8fa2  A5 5F       LDA character_state
+.C:8fa4  0A          ASL A
+.C:8fa5  AA          TAX
+.C:8fa6  BD B5 8F    LDA character_state_handler_ptrs,X
+.C:8fa9  8D B3 8F    STA <state_handler
+.C:8fac  BD B6 8F    LDA character_state_handler_ptrs + 1,X
+.C:8faf  8D B4 8F    STA >state_handler
+state_handler = $8fb3
+.C:8fb2  4C 00 00    JMP state_handler	;Inlined
+;=========================================
+character_state_handler_ptrs = $8fb5
+
+;Pointers
+00	8fe3 		Standing still (waiting for dialogue)
+01	9008		Drawing gun Slow (delay of 5)
+02	903e		Leaving right but drawing gun if sheriff draws
+03	906c		Walking away then leaving right
+04	90de		Surrender (drop gun)
+05	90de		Surrender (drop gun)
+06	9125		Leave right but surrender if sheriff draws
+07	9178		Walking in (left)?
+08	9286		Walking right, then away (and then leaving right)
+09	92a8		Drawing gun Fast (delay of 2)
+0A	92df		Entering scene and walking towards center of street
+0B	934a		Entering scene and walking towards center of street
+0C	93ad		Running around and shooting
+0D	9403		Falling down after being shot
+0E	9433		Shooting
+0F	944f		Walking away then leaving left
+10	94c1		Walking toward sheriff before starting a conversation
+11	903e		Walking away then leaving right
+12	950b		Leaving, about to shoot from the street
+13	9590		Drawing gun Very Fast (delay of 1)
+14	95cc		Preparing to shoot from scene's edge
+15	9618		Leaving and shooting on exit
+16	9690 		Talking
+;=========================================
+; State #00 - Standing still (waiting for dialogue)
+;=========================================
+.C:8fe3  A5 62       LDA character_animation_state
+.C:8fe5  D0 11       BNE $8FF8
+.C:8fe7  A9 00       LDA #$00
+.C:8fe9  20 27 9E    JSR set_character_stance
+.C:8fec  A9 00       LDA #$00
+.C:8fee  85 5D       STA $5D
+.C:8ff0  A9 0F       LDA #$0F
+.C:8ff2  85 8D       STA $8D
+.C:8ff4  A9 01       LDA #$01
+.C:8ff6  85 62       STA character_animation_state
+:
+.C:8ff8  A5 8C       LDA $8C
+.C:8ffa  10 09       BPL exit_to_animate
+.C:8ffc  A5 8D       LDA $8D
+.C:8ffe  D0 05       BNE exit_to_animate
+;Set character state to #03 (leaving right)
+.C:9000  A9 03       LDA #$03
+.C:9002  20 1C 9E    JSR set_character_state
+exit_to_animate:
+.C:9005  4C B7 96    JMP animate_character
+;=========================================
+; State #01 - Drawing gun slow (delay of 5)
+;=========================================
+.C:9008  A5 62       LDA character_animation_state
+.C:900a  C9 00       CMP #$00
+.C:900c  D0 08       BNE check_state_01
+;--------------------------------------
+; character_animation_state == 00
+;--------------------------------------
+.C:900e  A9 01       LDA #$01
+.C:9010  85 62       STA character_animation_state
+.C:9012  A9 05       LDA #$05
+.C:9014  85 63       STA character_animation_delay
+check_state_01:
+.C:9016  A5 62       LDA character_animation_state
+.C:9018  C9 01       CMP #$01
+.C:901a  D0 14       BNE $9030
+;--------------------------------------
+; character_animation_state == 01
+;--------------------------------------
+.C:901c  A5 63       LDA character_animation_delay
+.C:901e  D0 1B       BNE exit
+.C:9020  A9 02       LDA #$02
+.C:9022  85 62       STA character_animation_state
+.C:9024  A9 06       LDA #$06
+.C:9026  20 27 9E    JSR set_character_stance
+.C:9029  A9 00       LDA #$00
+.C:902b  85 5D       STA $5D
+.C:902d  4C 3B 90    JMP exit
+check_state_02:
+.C:9030  A5 62       LDA character_animation_state
+.C:9032  C9 02       CMP #$02
+.C:9034  D0 05       BNE exit
+;Set character state to #0E (shooting)
+.C:9036  A9 0E       LDA #$0E
+.C:9038  20 1C 9E    JSR set_character_state
+exit:
+.C:903b  4C B7 96    JMP animate_character
+;=========================================
+; State #02 - Leaving right but drawing gun if sheriff draws
+;=========================================
+.C:903e  A9 00       LDA #$00
+.C:9040  85 5D       STA $5D
+.C:9042  A5 62       LDA character_animation_state
+.C:9044  D0 08       BNE $904E
+.C:9046  A9 01       LDA #$01
+.C:9048  85 62       STA character_animation_state
+.C:904a  A9 05       LDA #$05
+.C:904c  85 63       STA character_animation_delay
+.C:904e  A5 62       LDA character_animation_state
+.C:9050  C9 01       CMP #$01
+.C:9052  D0 15       BNE exit
+.C:9054  A5 63       LDA character_animation_delay
+.C:9056  D0 08       BNE check_sheriff_gun
+;Set character state to #03 (leaving right)
+.C:9058  A9 03       LDA #$03
+.C:905a  20 1C 9E    JSR set_character_state
+.C:905d  4C 69 90    JMP exit
+check_sheriff_gun:
+.C:9060  A5 4C       LDA gun_draw_crosshair_counter
+.C:9062  F0 05       BEQ exit
+;Set character state to #09 (drawing gun)
+.C:9064  A9 09       LDA #$09
+.C:9066  20 1C 9E    JSR set_character_state
+exit:
+.C:9069  4C B7 96    JMP animate_character
+;=========================================
+; State #03 - Leaving right
+;=========================================
+.C:906c  A5 62       LDA character_animation_state
+.C:906e  D0 0B       BNE $907B
+.C:9070  A9 01       LDA #$01
+.C:9072  85 62       STA character_animation_state
+.C:9074  A9 02       LDA #$02
+.C:9076  85 63       STA character_animation_delay
+.C:9078  4C DB 90    JMP $90DB
+.C:907b  A5 62       LDA character_animation_state
+.C:907d  C9 01       CMP #$01
+.C:907f  D0 14       BNE $9095
+.C:9081  A5 63       LDA character_animation_delay
+.C:9083  D0 4E       BNE $90D3
+.C:9085  A9 0F       LDA #$0F
+.C:9087  85 62       STA character_animation_state
+.C:9089  A9 00       LDA #$00
+.C:908b  85 5D       STA $5D
+.C:908d  A9 0F       LDA #$0F
+.C:908f  20 27 9E    JSR set_character_stance
+.C:9092  4C DB 90    JMP $90DB
+.C:9095  A5 62       LDA character_animation_state
+.C:9097  C9 0F       CMP #$0F
+.C:9099  D0 10       BNE $90AB
+.C:909b  A9 10       LDA #$10
+.C:909d  85 62       STA character_animation_state
+.C:909f  A9 05       LDA #$05
+.C:90a1  85 5D       STA $5D
+.C:90a3  A9 05       LDA #$05
+.C:90a5  20 27 9E    JSR set_character_stance
+.C:90a8  4C DB 90    JMP $90DB
+.C:90ab  A5 62       LDA character_animation_state
+.C:90ad  C9 10       CMP #$10
+.C:90af  D0 0C       BNE $90BD
+.C:90b1  A9 11       LDA #$11
+.C:90b3  85 62       STA character_animation_state
+.C:90b5  A9 05       LDA #$05
+.C:90b7  20 27 9E    JSR set_character_stance
+.C:90ba  4C DB 90    JMP $90DB
+.C:90bd  A5 62       LDA character_animation_state
+.C:90bf  C9 11       CMP #$11
+.C:90c1  D0 10       BNE $90D3
+.C:90c3  A9 02       LDA #$02
+.C:90c5  85 62       STA character_animation_state
+.C:90c7  A9 03       LDA #$03
+.C:90c9  20 27 9E    JSR set_character_stance
+.C:90cc  A9 03       LDA #$03
+.C:90ce  85 5D       STA $5D
+.C:90d0  4C DB 90    JMP $90DB
+.C:90d3  20 A1 9A    JSR $9AA1
+.C:90d6  90 03       BCC $90DB
+.C:90d8  20 6F 9B    JSR finish_scene
+exit_2:
+.C:90db  4C B7 96    JMP animate_character
+;=========================================
+; States #04 and #05 - Surrender (drop gun)
+;=========================================
+.C:90de  A5 62       LDA character_animation_state
+.C:90e0  D0 0B       BNE $90ED
+;--------------------------------------
+; character_animation_state == 00
+;--------------------------------------
+.C:90e2  A9 01       LDA #$01
+.C:90e4  85 62       STA character_animation_state
+.C:90e6  A9 02       LDA #$02
+.C:90e8  85 63       STA character_animation_delay
+.C:90ea  4C 22 91    JMP exit
+.C:90ed  A5 62       LDA character_animation_state
+.C:90ef  C9 01       CMP #$01
+.C:90f1  D0 14       BNE $9107
+;--------------------------------------
+; character_animation_state == 01
+;--------------------------------------
+.C:90f3  A5 63       LDA character_animation_delay
+.C:90f5  D0 0D       BNE $9104
+.C:90f7  A9 08       LDA #$08
+.C:90f9  20 27 9E    JSR set_character_stance
+.C:90fc  A9 00       LDA #$00
+.C:90fe  85 5D       STA $5D
+.C:9100  A9 08       LDA #$08
+.C:9100  A9 08       LDA #$08
+.C:9102  85 62       STA character_animation_state
+.C:9104  4C 22 91    JMP exit
+.C:9107  A5 62       LDA character_animation_state
+.C:9109  C9 08       CMP #$08
+.C:910b  D0 12       BNE $911F
+;--------------------------------------
+; character_animation_state == 08
+;--------------------------------------
+.C:910d  A9 0D       LDA #$0D
+.C:910f  20 27 9E    JSR set_character_stance
+.C:9112  A9 04       LDA #$04
+.C:9114  85 63       STA character_animation_delay
+.C:9116  A9 02       LDA #$02
+.C:9118  85 62       STA character_animation_state
+.C:911a  E6 7F       INC crooks_captured
+.C:911c  4C 22 91    JMP exit
+.C:911f  20 6F 9B    JSR finish_scene
+exit:
+.C:9122  4C B7 96    JMP animate_character
+;=========================================
+; State #06 - Leave right but surrender if sheriff draws
+;=========================================
+.C:9125  A9 00       LDA #$00
+.C:9127  85 5D       STA $5D
+.C:9129  A5 62       LDA character_animation_state
+.C:912b  D0 0B       BNE check_animation_state_1
+;--------------------------------------
+; character_animation_state == 00
+;--------------------------------------
+.C:912d  A9 05       LDA #$05
+.C:912f  85 63       STA character_animation_delay
+.C:9131  A9 01       LDA #$01
+.C:9133  85 62       STA character_animation_state
+.C:9135  4C 75 91    JMP exit
+;--------------------------------------
+check_animation_state_1:
+.C:9138  A5 62       LDA character_animation_state
+.C:913a  C9 01       CMP #$01
+.C:913c  D0 1C       BNE check_animation_state_8
+;--------------------------------------
+; character_animation_state == 01
+;--------------------------------------
+.C:913e  A5 4C       LDA gun_draw_crosshair_counter
+.C:9140  F0 0C       BEQ check_delay
+.C:9142  A9 08       LDA #$08
+.C:9144  85 62       STA character_animation_state
+.C:9146  A9 08       LDA #$08
+.C:9148  20 27 9E    JSR set_character_stance
+.C:914b  4C 75 91    JMP exit
+;--------------------------------------
+check_delay:
+.C:914e  A5 63       LDA character_animation_delay
+.C:9150  D0 08       BNE check_animation_state_8
+;Set character state to #03 (leaving right)
+.C:9152  A9 03       LDA #$03
+.C:9154  20 1C 9E    JSR set_character_state
+.C:9157  4C 75 91    JMP exit
+;--------------------------------------
+check_animation_state_8:
+.C:915a  A5 62       LDA character_animation_state
+.C:915c  C9 08       CMP #$08
+.C:915e  D0 12       BNE $9172
+;--------------------------------------
+; character_animation_state == 08
+;--------------------------------------
+.C:9160  A9 0D       LDA #$0D
+.C:9162  20 27 9E    JSR set_character_stance
+.C:9165  A9 04       LDA #$04
+.C:9167  85 63       STA character_animation_delay
+.C:9169  A9 02       LDA #$02
+.C:916b  85 62       STA character_animation_state
+.C:916d  E6 7F       INC crooks_captured
+.C:916f  4C 22 91    JMP exit
+.C:9172  20 6F 9B    JSR finish_scene
+exit:
+.C:9175  4C B7 96    JMP animate_character
+;=========================================
+; State #07 - Walking in (left)? - Gang shootout
+;=========================================
+.C:9178  A5 62       LDA character_animation_state
+.C:917a  D0 0B       BNE check_animation_state_1
+;--------------------------------------
+; character_animation_state == 00
+;--------------------------------------
+.C:917c  A9 01       LDA #$01
+.C:917e  85 62       STA character_animation_state
+.C:9180  A9 02       LDA #$02
+.C:9182  85 63       STA character_animation_delay
+.C:9184  4C 54 92    JMP check_animation_state_3
+check_animation_state_1:
+.C:9187  A5 62       LDA character_animation_state
+.C:9189  C9 01       CMP #$01
+.C:918b  D0 14       BNE check_animation_state_0F
+;--------------------------------------
+; character_animation_state == 01
+;--------------------------------------
+.C:918d  A5 63       LDA character_animation_delay
+.C:918f  D0 53       BNE check_animation_state_3b
+.C:9191  A9 0F       LDA #$0F
+.C:9193  85 62       STA character_animation_state
+.C:9195  A9 00       LDA #$00
+.C:9197  85 5D       STA $5D
+.C:9199  A9 0F       LDA #$0F
+.C:919b  20 27 9E    JSR set_character_stance
+.C:919e  4C 5F 92    JMP exit
+;--------------------------------------
+check_animation_state_0F:
+.C:91a1  A5 62       LDA character_animation_state
+.C:91a3  C9 0F       CMP #$0F
+.C:91a5  D0 10       BNE check_animation_state_10
+;--------------------------------------
+; character_animation_state == 0F
+;--------------------------------------
+.C:91a7  A9 10       LDA #$10
+.C:91a9  85 62       STA character_animation_state
+.C:91ab  A9 05       LDA #$05
+.C:91ad  85 5D       STA $5D
+.C:91af  A9 05       LDA #$05
+.C:91b1  20 27 9E    JSR set_character_stance
+.C:91b4  4C 5F 92    JMP exit
+;--------------------------------------
+check_animation_state_10:
+.C:91b7  A5 62       LDA character_animation_state
+.C:91b9  C9 10       CMP #$10
+.C:91bb  D0 0C       BNE check_animation_state_11
+;--------------------------------------
+; character_animation_state == 10
+;--------------------------------------
+.C:91bd  A9 11       LDA #$11
+.C:91bf  85 62       STA character_animation_state
+.C:91c1  A9 05       LDA #$05
+.C:91c3  20 27 9E    JSR set_character_stance
+.C:91c6  4C 5F 92    JMP exit
+;--------------------------------------
+check_animation_state_11:
+.C:91c9  A5 62       LDA character_animation_state
+.C:91cb  C9 11       CMP #$11
+.C:91cd  D0 18       BNE check_animation_state_2
+;--------------------------------------
+; character_animation_state == 11
+;--------------------------------------
+.C:91cf  A9 03       LDA #$03
+.C:91d1  20 27 9E    JSR set_character_stance
+.C:91d4  A2 03       LDX #$03
+.C:91d6  A5 48       LDA $48
+.C:91d8  29 80       AND #$80
+.C:91da  D0 02       BNE $91DE
+.C:91dc  A2 07       LDX #$07
+:
+.C:91de  86 5D       STX $5D
+.C:91e0  A9 02       LDA #$02
+.C:91e2  85 62       STA character_animation_state
+check_animation_state_3b:
+.C:91e4  4C 54 92    JMP check_animation_state_3
+;--------------------------------------
+check_animation_state_2:
+.C:91e7  A5 62       LDA character_animation_state
+.C:91e9  C9 02       CMP #$02
+.C:91eb  D0 67       BNE check_animation_state_3
+;--------------------------------------
+; character_animation_state == 02
+;--------------------------------------
+.C:91ed  20 A1 9A    JSR $9AA1
+.C:91f0  90 62       BCC check_animation_state_3
+.C:91f2  A9 03       LDA #$03
+.C:91f4  85 62       STA character_animation_state
+.C:91f6  A6 4B       LDX filename_index
+.C:91f8  BD 7A 92    LDA $927A,X
+.C:91fb  85 4A       STA $4A
+.C:91fd  20 5E 54    JSR setup_background
+.C:9200  A9 00       LDA #$00
+.C:9200  A9 00       LDA #$00
+.C:9202  85 63       STA character_animation_delay
+.C:9204  A9 02       LDA #$02
+.C:9206  85 62       STA character_animation_state
+.C:9208  20 6F 9B    JSR finish_scene
+.C:920b  A9 00       LDA #$00
+.C:920d  85 63       STA character_animation_delay
+.C:920f  20 6F 9B    JSR finish_scene
+.C:9212  A9 00       LDA #$00
+.C:9214  85 66       STA $66
+;"A few seconds later"
+.C:9216  A2 06       LDX #$06
+.C:9218  A9 14       LDA #$14
+.C:921a  20 B1 5A    JSR print_common_phrase
+.C:921d  A5 4A       LDA $4A
+.C:921f  0A          ASL A
+.C:9220  0A          ASL A
+.C:9221  18          CLC
+.C:9222  65 4A       ADC $4A
+.C:9224  65 4A       ADC $4A
+.C:9226  AA          TAX
+.C:9227  BD 62 92    LDA $9262,X
+.C:922a  85 53       STA $53
+.C:922c  BD 63 92    LDA $9263,X
+.C:922f  85 54       STA $54
+.C:9231  BD 64 92    LDA $9264,X
+.C:9234  85 55       STA $55
+.C:9236  BD 65 92    LDA $9265,X
+.C:9239  85 56       STA $56
+.C:923b  BD 66 92    LDA $9266,X
+.C:923e  85 5D       STA $5D
+.C:9240  BD 67 92    LDA $9267,X
+.C:9243  85 61       STA character_stance
+.C:9245  A9 FE       LDA #$FE
+.C:9247  85 60       STA $60
+;Set character's state to #07 (leaving left)
+.C:9249  A9 07       LDA #$07
+.C:924b  85 5F       STA character_state
+.C:924d  A9 03       LDA #$03
+.C:924f  85 62       STA character_animation_state
+.C:9251  4C 5F 92    JMP exit
+;--------------------------------------
+check_animation_state_3:
+.C:9254  A5 62       LDA character_animation_state
+.C:9256  C9 03       CMP #$03
+.C:9258  D0 05       BNE exit
+;Set character state to #0C (running and shooting)
+.C:925a  A9 0C       LDA #$0C
+.C:925c  20 1C 9E    JSR set_character_state
+exit:
+.C:925f  4C B7 96    JMP animate_character
+;=========================================
+; State #08 - walking right, then away
+; Will transition to #03 - leaving right
+;=========================================
+.C:9286  A9 00       LDA #$00
+.C:9288  85 5D       STA $5D
+.C:928a  A5 62       LDA character_animation_state
+.C:928c  D0 08       BNE check_state_1
+;--------------------------------------
+; character_animation_state == 00
+;--------------------------------------
+.C:928e  A9 01       LDA #$01
+.C:9290  85 62       STA character_animation_state
+.C:9292  A9 05       LDA #$05
+.C:9294  85 63       STA character_animation_delay
+check_state_1:
+.C:9296  A5 62       LDA character_animation_state
+.C:9298  C9 01       CMP #$01
+.C:929a  D0 09       BNE exit
+;--------------------------------------
+; character_animation_state == 01
+;--------------------------------------
+.C:929c  A5 63       LDA character_animation_delay
+.C:929e  D0 05       BNE exit
+;Set character's state to #03 (leaving right)
+.C:92a0  A9 03       LDA #$03
+.C:92a2  20 1C 9E    JSR set_character_state
+exit:
+.C:92a5  4C B7 96    JMP animate_character
+;=========================================
+; State #09 - Drawing gun Fast (delay of 2)
+;=========================================
+.C:92a8  A9 00       LDA #$00
+.C:92aa  85 5D       STA $5D
+.C:92ac  A5 62       LDA character_animation_state
+.C:92ae  D0 0B       BNE $92BB
+;--------------------------------------
+; character_animation_state == 00
+;--------------------------------------
+.C:92b0  A9 01       LDA #$01
+.C:92b2  85 62       STA character_animation_state
+.C:92b4  A9 02       LDA #$02
+.C:92b6  85 63       STA character_animation_delay
+.C:92b8  4C DC 92    JMP exit
+.C:92bb  A5 62       LDA character_animation_state
+.C:92bd  C9 01       CMP #$01
+.C:92bf  D0 10       BNE $92D1
+;--------------------------------------
+; character_animation_state == 01
+;--------------------------------------
+.C:92c1  A5 63       LDA character_animation_delay
+.C:92c3  D0 09       BNE $92CE
+.C:92c5  A9 06       LDA #$06
+.C:92c7  20 27 9E    JSR set_character_stance
+.C:92ca  A9 02       LDA #$02
+.C:92cc  85 62       STA character_animation_state
+.C:92ce  4C D1 92    JMP $92D1
+.C:92d1  A5 62       LDA character_animation_state
+.C:92d3  C9 02       CMP #$02
+.C:92d5  D0 05       BNE exit
+;--------------------------------------
+; character_animation_state == 02
+;--------------------------------------
+;Set character's state to #0E (shooting)
+.C:92d7  A9 0E       LDA #$0E
+.C:92d9  20 1C 9E    JSR set_character_state
+exit:
+.C:92dc  4C B7 96    JMP animate_character
+;=========================================
+; State #0A - Entering scene and walking towards center of street
+;=========================================
+.C:92df  A5 62       LDA character_animation_state
+.C:92e1  D0 29       BNE $930C
+.C:92e3  A6 4B       LDX filename_index
+.C:92e5  BD D4 88    LDA $88D4,X
+.C:92e8  85 56       STA $56
+.C:92ea  A9 00       LDA #$00
+.C:92ec  85 55       STA $55
+.C:92ee  A5 4A       LDA $4A
+.C:92f0  0A          ASL A
+.C:92f1  AA          TAX
+.C:92f2  BD F7 9A    LDA $9AF7,X
+.C:92f5  85 53       STA $53
+.C:92f7  BD F8 9A    LDA $9AF8,X
+.C:92fa  85 54       STA $54
+.C:92fc  A9 07       LDA #$07
+.C:92fe  85 5D       STA $5D
+.C:9300  A9 03       LDA #$03
+.C:9300  A9 03       LDA #$03
+.C:9302  20 27 9E    JSR set_character_stance
+.C:9305  A9 01       LDA #$01
+.C:9307  85 62       STA character_animation_state
+.C:9309  4C 38 93    JMP $9338
+.C:930c  A5 62       LDA character_animation_state
+.C:930e  C9 01       CMP #$01
+.C:9310  D0 26       BNE $9338
+.C:9312  A5 53       LDA $53
+.C:9314  C9 80       CMP #$80
+.C:9316  90 20       BCC $9338
+.C:9318  C9 A0       CMP #$A0
+.C:931a  B0 1C       BCS $9338
+.C:931c  A5 4C       LDA gun_draw_crosshair_counter
+.C:931e  F0 22       BEQ $9342
+.C:9320  A9 00       LDA #$00
+.C:9322  85 61       STA character_stance
+.C:9324  85 5D       STA $5D
+.C:9326  A9 FE       LDA #$FE
+.C:9328  85 60       STA $60
+;"Put that gun away, mister!"
+.C:932a  A9 19       LDA #$19
+.C:932c  A2 06       LDX #$06
+.C:932e  20 B1 5A    JSR print_common_phrase
+.C:9331  A9 02       LDA #$02
+.C:9333  85 62       STA character_animation_state
+.C:9335  4C 47 93    JMP $9347
+.C:9338  A5 62       LDA character_animation_state
+.C:933a  C9 02       CMP #$02
+.C:933c  D0 09       BNE $9347
+.C:933e  A5 4C       LDA gun_draw_crosshair_counter
+.C:9340  D0 05       BNE $9347
+;Set character's state to #10 (walking toward sheriff)
+.C:9342  A9 10       LDA #$10
+.C:9344  20 1C 9E    JSR set_character_state
+.C:9347  4C B7 96    JMP animate_character
+;=========================================
+; State #0B - Entering scene and walking towards center of street
+;=========================================
+.C:934a  A5 62       LDA character_animation_state
+.C:934c  D0 21       BNE $936F
+.C:934e  A6 4B       LDX filename_index
+.C:9350  BD D4 88    LDA $88D4,X
+.C:9353  85 56       STA $56
+.C:9355  A9 00       LDA #$00
+.C:9357  85 55       STA $55
+.C:9359  85 54       STA $54
+.C:935b  A9 4B       LDA filename_index
+.C:935d  85 53       STA $53
+.C:935f  A9 03       LDA #$03
+.C:9361  20 27 9E    JSR set_character_stance
+.C:9364  A9 03       LDA #$03
+.C:9366  85 5D       STA $5D
+.C:9368  A9 01       LDA #$01
+.C:936a  85 62       STA character_animation_state
+.C:936c  4C 9B 93    JMP $939B
+.C:936f  A5 62       LDA character_animation_state
+.C:9371  C9 01       CMP #$01
+.C:9373  D0 26       BNE $939B
+.C:9375  A5 53       LDA $53
+.C:9377  C9 90       CMP #$90
+.C:9379  90 20       BCC $939B
+.C:937b  C9 C0       CMP #$C0
+.C:937d  B0 1C       BCS $939B
+.C:937f  A5 4C       LDA gun_draw_crosshair_counter
+.C:9381  F0 22       BEQ $93A5
+.C:9383  A9 00       LDA #$00
+.C:9385  85 61       STA character_stance
+.C:9387  85 5D       STA $5D
+.C:9389  A9 FE       LDA #$FE
+.C:938b  85 60       STA $60
+;"Put that gun away, mister!"
+.C:938d  A9 19       LDA #$19
+.C:938f  A2 06       LDX #$06
+.C:9391  20 B1 5A    JSR print_common_phrase
+.C:9394  A9 02       LDA #$02
+.C:9396  85 62       STA character_animation_state
+.C:9398  4C AA 93    JMP $93AA
+.C:939b  A5 62       LDA character_animation_state
+.C:939d  C9 02       CMP #$02
+.C:939f  D0 09       BNE $93AA
+.C:93a1  A5 4C       LDA gun_draw_crosshair_counter
+.C:93a3  D0 05       BNE $93AA
+;Set character's state to #10 (walking toward sheriff before starting a conversation)
+.C:93a5  A9 10       LDA #$10
+.C:93a7  20 1C 9E    JSR set_character_state
+.C:93aa  4C B7 96    JMP animate_character
+;=========================================
+; State #0C - Running around and shooting
+;=========================================
+.C:93ad  A5 62       LDA character_animation_state
+.C:93af  D0 0B       BNE $93BC
+.C:93b1  A9 01       LDA #$01
+.C:93b3  85 62       STA character_animation_state
+.C:93b5  A9 02       LDA #$02
+.C:93b7  85 63       STA character_animation_delay
+.C:93b9  4C 00 94    JMP $9400
+.C:93bc  A5 62       LDA character_animation_state
+.C:93be  C9 01       CMP #$01
+.C:93c0  D0 1C       BNE $93DE
+.C:93c2  A5 63       LDA character_animation_delay
+.C:93c4  D0 15       BNE $93DB
+.C:93c6  A2 03       LDX #$03
+.C:93c8  A5 7C       LDA random_a
+.C:93ca  29 40       AND #$40
+.C:93cc  D0 02       BNE $93D0
+.C:93ce  A2 07       LDX #$07
+.C:93d0  86 5D       STX $5D
+.C:93d2  A9 09       LDA #$09
+.C:93d4  20 27 9E    JSR set_character_stance
+.C:93d7  A9 02       LDA #$02
+.C:93d9  85 62       STA character_animation_state
+.C:93db  4C 00 94    JMP $9400
+.C:93de  A5 7C       LDA random_a
+.C:93e0  29 01       AND #$01
+.C:93e2  D0 0C       BNE $93F0
+.C:93e4  A2 03       LDX #$03
+.C:93e6  A5 53       LDA $53
+.C:93e8  29 40       AND #$40
+.C:93ea  D0 02       BNE $93EE
+.C:93ec  A2 07       LDX #$07
+.C:93ee  86 5D       STX $5D
+.C:93f0  20 CC 9A    JSR $9ACC
+.C:93f3  90 0B       BCC $9400
+.C:93f5  A9 03       LDA #$03
+.C:93f7  85 61       STA character_stance
+.C:93f9  A9 FE       LDA #$FE
+.C:93fb  85 60       STA $60
+.C:93fd  20 6F 9B    JSR finish_scene
+.C:9400  4C B7 96    JMP animate_character
+;=========================================
+; State #0D - Falling down after being shot
+;=========================================
+.C:9403  A5 62       LDA character_animation_state
+.C:9405  D0 10       BNE $9417
+.C:9407  A9 00       LDA #$00
+.C:9409  85 5D       STA $5D
+.C:940b  A9 0A       LDA #$0A
+.C:940d  20 27 9E    JSR set_character_stance
+.C:9410  A9 01       LDA #$01
+.C:9412  85 62       STA character_animation_state
+.C:9414  4C 30 94    JMP $9430
+.C:9417  A5 62       LDA character_animation_state
+.C:9419  C9 01       CMP #$01
+.C:941b  D0 10       BNE $942D
+.C:941d  A9 0B       LDA #$0B
+.C:941f  20 27 9E    JSR set_character_stance
+.C:9422  A9 02       LDA #$02
+.C:9424  85 62       STA character_animation_state
+.C:9426  A9 05       LDA #$05
+.C:9428  85 63       STA character_animation_delay
+.C:942a  4C 30 94    JMP $9430
+.C:942d  20 6F 9B    JSR finish_scene
+.C:9430  4C B7 96    JMP animate_character
+;=========================================
+; State #0E - Shooting
+;=========================================
+.C:9433  A9 00       LDA #$00
+.C:9435  85 5D       STA $5D
+.C:9437  A5 48       LDA $48
+.C:9439  29 3F       AND #$3F
+.C:943b  C9 10       CMP #$10
+.C:943d  B0 08       BCS $9447
+.C:943f  A9 07       LDA #$07
+.C:9441  20 27 9E    JSR set_character_stance
+.C:9444  4C 4C 94    JMP exit
+.C:9447  A9 0C       LDA #$0C
+.C:9449  20 27 9E    JSR set_character_stance
+exit:
+.C:944c  4C B7 96    JMP animate_character
+;=========================================
+; State #0F - Walking away then leaving left
+;=========================================
+.C:944f  A5 62       LDA character_animation_state
+.C:9451  D0 0B       BNE $945E
+.C:9453  A9 01       LDA #$01
+.C:9455  85 62       STA character_animation_state
+.C:9457  A9 02       LDA #$02
+.C:9459  85 63       STA character_animation_delay
+.C:945b  4C BE 94    JMP $94BE
+.C:945e  A5 62       LDA character_animation_state
+.C:9460  C9 01       CMP #$01
+.C:9462  D0 14       BNE $9478
+.C:9464  A5 63       LDA character_animation_delay
+.C:9466  D0 4E       BNE $94B6
+.C:9468  A9 0F       LDA #$0F
+.C:946a  85 62       STA character_animation_state
+.C:946c  A9 00       LDA #$00
+.C:946e  85 5D       STA $5D
+.C:9470  A9 0F       LDA #$0F
+.C:9472  20 27 9E    JSR set_character_stance
+.C:9475  4C BE 94    JMP $94BE
+.C:9478  A5 62       LDA character_animation_state
+.C:947a  C9 0F       CMP #$0F
+.C:947c  D0 10       BNE $948E
+.C:947e  A9 10       LDA #$10
+.C:9480  85 62       STA character_animation_state
+.C:9482  A9 05       LDA #$05
+.C:9484  85 5D       STA $5D
+.C:9486  A9 05       LDA #$05
+.C:9488  20 27 9E    JSR set_character_stance
+.C:948b  4C BE 94    JMP $94BE
+.C:948e  A5 62       LDA character_animation_state
+.C:9490  C9 10       CMP #$10
+.C:9492  D0 0C       BNE $94A0
+.C:9494  A9 11       LDA #$11
+.C:9496  85 62       STA character_animation_state
+.C:9498  A9 05       LDA #$05
+.C:949a  20 27 9E    JSR set_character_stance
+.C:949d  4C BE 94    JMP $94BE
+.C:94a0  A5 62       LDA character_animation_state
+.C:94a2  C9 11       CMP #$11
+.C:94a4  D0 10       BNE $94B6
+.C:94a6  A9 02       LDA #$02
+.C:94a8  85 62       STA character_animation_state
+.C:94aa  A9 03       LDA #$03
+.C:94ac  20 27 9E    JSR set_character_stance
+.C:94af  A9 07       LDA #$07
+.C:94b1  85 5D       STA $5D
+.C:94b3  4C BE 94    JMP $94BE
+.C:94b6  20 A1 9A    JSR $9AA1
+.C:94b9  90 03       BCC $94BE
+.C:94bb  20 6F 9B    JSR finish_scene
+.C:94be  4C B7 96    JMP animate_character
+;=========================================
+; State #10 - Walking toward sheriff before starting a conversation
+; Will transition to #00 (standing still)
+;=========================================
+.C:94c1  A5 62       LDA character_animation_state
+.C:94c3  D0 14       BNE check_state_1
+;--------------------------------------
+; character_animation_state == 00
+;--------------------------------------
+.C:94c5  A9 01       LDA #$01
+.C:94c7  85 62       STA character_animation_state
+.C:94c9  A9 00       LDA #$00
+.C:94cb  85 63       STA character_animation_delay
+.C:94cd  A9 01       LDA #$01
+.C:94cf  85 5D       STA $5D
+.C:94d1  A9 04       LDA #$04
+.C:94d3  20 27 9E    JSR set_character_stance
+.C:94d6  4C 08 95    JMP exit
+check_state_1:
+.C:94d9  A5 62       LDA character_animation_state
+.C:94db  C9 01       CMP #$01
+.C:94dd  D0 0C       BNE check_state_2
+;--------------------------------------
+; character_animation_state == 01
+;--------------------------------------
+.C:94df  A9 04       LDA #$04
+.C:94e1  20 27 9E    JSR set_character_stance
+.C:94e4  A9 02       LDA #$02
+.C:94e6  85 62       STA character_animation_state
+.C:94e8  4C 08 95    JMP exit
+check_state_2:
+.C:94eb  A5 62       LDA character_animation_state
+.C:94ed  C9 02       CMP #$02
+.C:94ef  D0 17       BNE exit
+;--------------------------------------
+; character_animation_state == 02
+;--------------------------------------
+;Set character's state to #00 (standing still)
+.C:94f1  A9 00       LDA #$00
+.C:94f3  20 1C 9E    JSR set_character_state
+.C:94f6  A9 00       LDA #$00
+.C:94f8  85 38       STA current_tier
+.C:94fa  85 34       STA selected_phrase_tiers
+.C:94fc  85 35       STA selected_phrase_tiers + 1
+.C:94fe  85 36       STA selected_phrase_tiers + 2
+.C:9500  85 37       STA selected_phrase_tiers + 3
+.C:9502  85 67       STA $67
+.C:9504  A9 05       LDA #$05
+.C:9506  85 2F       STA selected_line_display_timer
+exit:
+.C:9508  4C B7 96    JMP animate_character
+;=========================================
+; State #12 - Leaving, about to shoot from the street
+; Will transition to #13 (drawing gun, delay of 1)
+;=========================================
+.C:950b  A5 62       LDA character_animation_state
+.C:950d  D0 0B       BNE check_state_01
+;--------------------------------------
+; character_animation_state == 00
+;--------------------------------------
+.C:950f  A9 02       LDA #$02
+.C:9511  85 63       STA character_animation_delay
+.C:9513  A9 01       LDA #$01
+.C:9515  85 62       STA character_animation_state
+.C:9517  4C 8D 95    JMP exit_3
+check_state_01:
+.C:951a  A5 62       LDA character_animation_state
+.C:951c  C9 01       CMP #$01
+.C:951e  D0 14       BNE check_state_0f
+;--------------------------------------
+; character_animation_state == 01
+;--------------------------------------
+.C:9520  A5 63       LDA character_animation_delay
+.C:9522  D0 57       BNE exit_2
+.C:9524  A9 0F       LDA #$0F
+.C:9526  85 62       STA character_animation_state
+.C:9528  A9 00       LDA #$00
+.C:952a  85 5D       STA $5D
+.C:952c  A9 0F       LDA #$0F
+.C:952e  20 27 9E    JSR set_character_stance
+.C:9531  4C 8D 95    JMP exit
+check_state_0f:
+.C:9534  A5 62       LDA character_animation_state
+.C:9536  C9 0F       CMP #$0F
+.C:9538  D0 10       BNE check_state_10
+;--------------------------------------
+; character_animation_state == 0F
+;--------------------------------------
+.C:953a  A9 10       LDA #$10
+.C:953c  85 62       STA character_animation_state
+.C:953e  A9 05       LDA #$05
+.C:9540  85 5D       STA $5D
+.C:9542  A9 05       LDA #$05
+.C:9544  20 27 9E    JSR set_character_stance
+.C:9547  4C 8D 95    JMP exit_3
+check_state_10:
+.C:954a  A5 62       LDA character_animation_state
+.C:954c  C9 10       CMP #$10
+.C:954e  D0 0C       BNE check_state_11
+;--------------------------------------
+; character_animation_state == 10
+;--------------------------------------
+.C:9550  A9 11       LDA #$11
+.C:9552  85 62       STA character_animation_state
+.C:9554  A9 05       LDA #$05
+.C:9556  20 27 9E    JSR set_character_stance
+.C:9559  4C 8D 95    JMP exit_3
+check_state_11:
+.C:955c  A5 62       LDA character_animation_state
+.C:955e  C9 11       CMP #$11
+.C:9560  D0 1C       BNE check_state_2
+;--------------------------------------
+; character_animation_state == 11
+;--------------------------------------
+.C:9562  A2 03       LDX #$03
+.C:9564  A5 48       LDA $48
+.C:9566  29 80       AND #$80
+.C:9568  D0 02       BNE $956C
+.C:956a  A2 07       LDX #$07
+.C:956c  86 5D       STX $5D
+.C:956e  A9 02       LDA #$02
+.C:9570  85 62       STA character_animation_state
+.C:9572  A9 02       LDA #$02
+.C:9574  85 63       STA character_animation_delay
+.C:9576  A9 03       LDA #$03
+.C:9578  20 27 9E    JSR set_character_stance
+exit_2:
+.C:957b  4C 8D 95    JMP exit
+check_state_2:
+.C:957e  A5 62       LDA character_animation_state
+.C:9580  C9 02       CMP #$02
+.C:9582  D0 09       BNE exit
+;--------------------------------------
+; character_animation_state == 02
+;--------------------------------------
+.C:9584  A5 63       LDA character_animation_delay
+.C:9586  D0 05       BNE exit
+;Set character's state to #13 (drawing gun, delay of 1)
+.C:9588  A9 13       LDA #$13
+.C:958a  20 1C 9E    JSR set_character_state
+exit:
+.C:958d  4C B7 96    JMP animate_character
+;=========================================
+; State #13 - Drawing gun Very Fast (delay of 1)
+; Will transition to #0E - Shooting
+;=========================================
+.C:9590  A9 00       LDA #$00
+.C:9592  85 5D       STA $5D
+.C:9594  A9 00       LDA #$00
+.C:9596  20 27 9E    JSR set_character_stance
+.C:9599  A5 62       LDA character_animation_state
+.C:959b  D0 0B       BNE check_state_01
+;--------------------------------------
+; character_animation_state == 00
+;--------------------------------------
+.C:959d  A9 01       LDA #$01
+.C:959f  85 62       STA character_animation_state
+.C:95a1  A9 01       LDA #$01
+.C:95a3  85 63       STA character_animation_delay
+.C:95a5  4C C9 95    JMP exit
+check_state_01:
+.C:95a8  A5 62       LDA character_animation_state
+.C:95aa  C9 01       CMP #$01
+.C:95ac  D0 10       BNE check_state_02
+;--------------------------------------
+; character_animation_state == 01
+;--------------------------------------
+.C:95ae  A5 63       LDA character_animation_delay
+.C:95b0  D0 09       BNE check_state_02b
+.C:95b2  A9 06       LDA #$06
+.C:95b4  20 27 9E    JSR set_character_stance
+.C:95b7  A9 02       LDA #$02
+.C:95b9  85 62       STA character_animation_state
+check_state_02b:
+.C:95bb  4C BE 95    JMP check_state_02
+check_state_02:
+.C:95be  A5 62       LDA character_animation_state
+.C:95c0  C9 02       CMP #$02
+.C:95c2  D0 05       BNE exit
+;--------------------------------------
+; character_animation_state == 02
+;--------------------------------------
+;Set character's state to #0E (shooting)
+.C:95c4  A9 0E       LDA #$0E
+.C:95c6  20 1C 9E    JSR set_character_state
+exit:
+.C:95c9  4C B7 96    JMP animate_character
+;=========================================
+; State #14 - Preparing to shoot from scene's edge
+; Will transition to #13 - Draw gun very fast
+;=========================================
+.C:95cc  A5 62       LDA character_animation_state
+.C:95ce  D0 14       BNE check_state_01
+;--------------------------------------
+; character_animation_state == 00
+;--------------------------------------
+.C:95d0  A9 01       LDA #$01
+.C:95d2  85 62       STA character_animation_state
+.C:95d4  A9 02       LDA #$02
+.C:95d6  85 63       STA character_animation_delay
+.C:95d8  A9 00       LDA #$00
+.C:95da  85 5D       STA $5D
+.C:95dc  A9 00       LDA #$00
+.C:95de  20 27 9E    JSR set_character_stance
+.C:95e1  4C 15 96    JMP exit
+check_state_01:
+.C:95e4  A5 62       LDA character_animation_state
+.C:95e6  C9 01       CMP #$01
+.C:95e8  D0 2B       BNE exit
+;--------------------------------------
+; character_animation_state == 01
+;--------------------------------------
+.C:95ea  A5 63       LDA character_animation_delay
+.C:95ec  D0 27       BNE exit
+.C:95ee  A5 4A       LDA $4A
+;Load a random number into .X to set the N bit
+.C:95f0  A6 7C       LDX random_a
+.C:95f2  30 03       BMI set_up
+;If N bit is clear, add 4
+.C:95f4  18          CLC
+.C:95f5  69 04       ADC #$04
+set_up:
+;Set up sprite position?
+.C:95f7  85 4A       STA $4A
+.C:95f9  0A          ASL A
+.C:95fa  0A          ASL A
+.C:95fb  AA          TAX
+.C:95fc  BD 4F 9B    LDA $9B4F,X
+.C:95ff  85 53       STA $53
+.C:9601  BD 50 9B    LDA $9B50,X
+.C:9604  85 54       STA $54
+.C:9606  BD 51 9B    LDA $9B51,X
+.C:9609  85 55       STA $55
+.C:960b  BD 52 9B    LDA $9B52,X
+.C:960e  85 56       STA $56
+;Set character's state to #13 (Drawing gun Very Fast)
+.C:9610  A9 13       LDA #$13
+.C:9612  20 1C 9E    JSR set_character_state
+exit:
+.C:9615  4C B7 96    JMP animate_character
+;=========================================
+; State #15 - Leaving and shooting on exit
+; Will transition to #14 (Preparing to shoot from scene's edge)
+;=========================================
+.C:9618  A5 62       LDA character_animation_state
+.C:961a  D0 0B       BNE check_state_1
+;--------------------------------------
+; character_animation_state == 00
+;--------------------------------------
+.C:961c  A9 01       LDA #$01
+.C:961e  85 62       STA character_animation_state
+.C:9620  A9 02       LDA #$02
+.C:9622  85 63       STA character_animation_delay
+.C:9624  4C 8D 96    JMP exit
+check_state_1:
+.C:9627  A5 62       LDA character_animation_state
+.C:9629  C9 01       CMP #$01
+.C:962b  D0 14       BNE check_state_f
+;--------------------------------------
+; character_animation_state == 01
+;--------------------------------------
+.C:962d  A5 63       LDA character_animation_delay
+.C:962f  D0 4E       BNE $967F
+.C:9631  A9 0F       LDA #$0F
+.C:9633  85 62       STA character_animation_state
+.C:9635  A9 00       LDA #$00
+.C:9637  85 5D       STA $5D
+.C:9639  A9 0F       LDA #$0F
+.C:963b  20 27 9E    JSR set_character_stance
+.C:963e  4C 8D 96    JMP exit
+check_state_f:
+.C:9641  A5 62       LDA character_animation_state
+.C:9643  C9 0F       CMP #$0F
+.C:9645  D0 10       BNE check_state_10
+;--------------------------------------
+; character_animation_state == 0F
+;--------------------------------------
+.C:9647  A9 10       LDA #$10
+.C:9649  85 62       STA character_animation_state
+.C:964b  A9 05       LDA #$05
+.C:964d  85 5D       STA $5D
+.C:964f  A9 05       LDA #$05
+.C:9651  20 27 9E    JSR set_character_stance
+.C:9654  4C 8D 96    JMP exit
+check_state_10:
+.C:9657  A5 62       LDA character_animation_state
+.C:9659  C9 10       CMP #$10
+.C:965b  D0 0C       BNE check_state_11
+;--------------------------------------
+; character_animation_state == 10
+;--------------------------------------
+.C:965d  A9 11       LDA #$11
+.C:965f  85 62       STA character_animation_state
+.C:9661  A9 05       LDA #$05
+.C:9663  20 27 9E    JSR set_character_stance
+.C:9666  4C 8D 96    JMP exit
+check_state_11:
+.C:9669  A5 62       LDA character_animation_state
+.C:966b  C9 11       CMP #$11
+.C:966d  D0 10       BNE $967F
+;--------------------------------------
+; character_animation_state == 11
+;--------------------------------------
+.C:966f  A9 02       LDA #$02
+.C:9671  85 62       STA character_animation_state
+.C:9673  A9 03       LDA #$03
+.C:9675  20 27 9E    JSR set_character_stance
+.C:9678  A2 03       LDX #$03
+.C:967a  86 5D       STX $5D
+.C:967c  4C 8D 96    JMP exit
+:
+.C:967f  20 A1 9A    JSR $9AA1
+.C:9682  90 09       BCC exit
+;Set character's state to #14 (shooting from screen edge)
+.C:9684  A9 14       LDA #$14
+.C:9686  20 1C 9E    JSR set_character_state
+.C:9689  A9 FF       LDA #$FF
+.C:968b  85 67       STA $67
+exit:
+.C:968d  4C B7 96    JMP animate_character
+;=========================================
+; State #16 - Talking
+; Will transition to #00 (standing still)
+;=========================================
+.C:9690  A5 62       LDA character_animation_state
+.C:9692  D0 11       BNE check_state_1
+;--------------------------------------
+; character_animation_state == 00
+;--------------------------------------
+.C:9694  A9 0E       LDA #$0E
+.C:9696  20 27 9E    JSR set_character_stance
+.C:9699  A9 00       LDA #$00
+.C:969b  85 5D       STA $5D
+.C:969d  A9 01       LDA #$01
+.C:969f  85 62       STA character_animation_state
+.C:96a1  A9 03       LDA #$03
+.C:96a3  85 63       STA character_animation_delay
+check_state_1:
+.C:96a5  A5 62       LDA character_animation_state
+.C:96a7  C9 01       CMP #$01
+.C:96a9  D0 09       BNE exit
+;--------------------------------------
+; character_animation_state == 01
+;--------------------------------------
+.C:96ab  A5 63       LDA character_animation_delay
+.C:96ad  D0 05       BNE exit
+;Set character's state to #00 (standing still)
+.C:96af  A9 00       LDA #$00
+.C:96b1  20 1C 9E    JSR set_character_state
+exit:
+.C:96b4  4C B7 96    JMP animate_character
+;=============================================
+animate_character:
+.C:96b7  A5 60       LDA $60
+.C:96b9  C9 FF       CMP #$FF
+.C:96bb  D0 07       BNE $96C4
+.C:96bd  A9 00       LDA #$00
+.C:96bf  85 60       STA $60
+.C:96c1  4C A2 8F    JMP $8FA2
+.C:96c4  A5 60       LDA $60
+.C:96c6  C9 FE       CMP #$FE
+.C:96c8  D0 04       BNE $96CE
+.C:96ca  A9 00       LDA #$00
+.C:96cc  85 60       STA $60
+.C:96ce  A6 5D       LDX $5D
+.C:96d0  BD B3 7E    LDA $7EB3,X
+.C:96d3  18          CLC
+.C:96d4  65 53       ADC $53
+.C:96d6  85 53       STA $53
+.C:96d8  BD BC 7E    LDA $7EBC,X
+.C:96db  65 54       ADC $54
+.C:96dd  85 54       STA $54
+.C:96df  A5 55       LDA $55
+.C:96e1  18          CLC
+.C:96e2  7D C5 7E    ADC $7EC5,X
+.C:96e5  85 55       STA $55
+.C:96e7  A5 56       LDA $56
+.C:96e9  7D 34 9E    ADC $9E34,X
+.C:96ec  C9 30       CMP #$30
+.C:96ee  B0 02       BCS $96F2
+.C:96f0  A9 30       LDA #$30
+.C:96f2  C9 B3       CMP #$B3
+.C:96f4  90 06       BCC $96FC
+.C:96f6  A9 00       LDA #$00
+.C:96f8  85 55       STA $55
+.C:96fa  A9 B3       LDA #$B3
+.C:96fc  85 56       STA $56
+.C:96fe  A5 4B       LDA filename_index
+.C:9700  0A          ASL A
+.C:9700  0A          ASL A
+.C:9701  0A          ASL A
+.C:9702  AA          TAX
+;Set character colors
+.C:9703  A0 00       LDY #$00
+.C:9705  BD CE 7E    LDA character_colors,X
+.C:9708  99 2A D0    STA vic_sprite3_color_reg,Y
+.C:970b  E8          INX
+.C:970c  C8          INY
+.C:970d  C0 04       CPY #$04
+.C:970f  D0 F4       BNE $9705
+.C:9711  A6 61       LDX character_stance
+.C:9713  BD 93 7E    LDA $7E93,X
+.C:9716  85 5C       STA $5C
+.C:9718  A5 61       LDA character_stance
+.C:971a  0A          ASL A
+.C:971b  AA          TAX
+.C:971c  BD 28 7E    LDA $7E28,X
+.C:971f  85 0E       STA $0E
+.C:9721  BD 29 7E    LDA $7E29,X
+.C:9724  85 0F       STA $0F
+.C:9726  A4 60       LDY $60
+.C:9728  B1 0E       LDA ($0E),Y
+.C:972a  85 5B       STA $5B
+.C:972c  A6 61       LDX character_stance
+.C:972e  A5 60       LDA $60
+.C:9730  18          CLC
+.C:9731  69 01       ADC #$01
+.C:9733  DD A3 7E    CMP $7EA3,X
+.C:9736  90 02       BCC $973A
+.C:9738  A9 00       LDA #$00
+.C:973a  85 60       STA $60
+.C:973c  A5 8E       LDA $8E
+.C:973e  F0 05       BEQ $9745
+.C:9740  C6 8E       DEC $8E
+.C:9742  4C 4B 97    JMP $974B
+.C:9745  A5 54       LDA $54
+.C:9747  C9 02       CMP #$02
+.C:9749  90 0B       BCC $9756
+.C:974b  AD 15 D0    LDA vic_sprite_enable_register
+.C:974e  29 87       AND #$87
+.C:9750  8D 15 D0    STA vic_sprite_enable_register
+.C:9753  4C 5E 97    JMP $975E
+.C:9756  AD 15 D0    LDA vic_sprite_enable_register
+.C:9759  09 78       ORA #$78
+.C:975b  8D 15 D0    STA vic_sprite_enable_register
+.C:975e  A5 54       LDA $54
+.C:9760  D0 11       BNE $9773
+.C:9762  A5 53       LDA $53
+.C:9764  C9 A4       CMP #$A4
+.C:9766  B0 0B       BCS $9773
+.C:9768  AD 1B D0    LDA vic_sprite_priority_reg
+.C:976b  09 78       ORA #$78
+.C:976d  8D 1B D0    STA vic_sprite_priority_reg
+.C:9770  4C 7B 97    JMP $977B
+.C:9773  AD 1B D0    LDA vic_sprite_priority_reg
+.C:9776  29 87       AND #$87
+.C:9778  8D 1B D0    STA vic_sprite_priority_reg
+.C:977b  A5 56       LDA $56
+.C:977d  38          SEC
+.C:977e  E9 30       SBC #$30
+.C:9780  85 18       STA $18
+.C:9782  A9 00       LDA #$00
+.C:9784  0A          ASL A
+.C:9785  AA          TAX
+.C:9786  BD FE 7E    LDA $7EFE,X
+.C:9789  85 0E       STA $0E
+.C:978b  BD FF 7E    LDA $7EFF,X
+.C:978e  85 0F       STA $0F
+.C:9790  A5 5B       LDA $5B
+.C:9792  0A          ASL A
+.C:9793  0A          ASL A
+.C:9794  0A          ASL A
+.C:9795  18          CLC
+.C:9796  65 0E       ADC $0E
+.C:9798  85 0E       STA $0E
+.C:979a  A5 0F       LDA $0F
+.C:979c  69 00       ADC #$00
+.C:979e  85 0F       STA $0F
+.C:97a0  A0 FF       LDY #$FF
+.C:97a2  A5 5D       LDA $5D
+.C:97a4  C9 07       CMP #$07
+.C:97a6  D0 02       BNE $97AA
+.C:97a8  A0 10       LDY #$10
+.C:97aa  84 1E       STY $1E
+.C:97ac  A2 00       LDX #$00
+.C:97ae  A0 00       LDY #$00
+.C:97b0  B1 0E       LDA ($0E),Y
+.C:97b2  C6 1E       DEC $1E
+.C:97b4  30 05       BMI $97BB
+.C:97b6  49 FF       EOR #$FF
+.C:97b8  18          CLC
+.C:97b9  69 01       ADC #$01
+.C:97bb  18          CLC
+.C:97bc  65 53       ADC $53
+.C:97be  95 6E       STA sprite_3_x_lo,X
+.C:97c0  E8          INX
+.C:97c1  C8          INY
+.C:97c2  A5 18       LDA $18
+.C:97c4  18          CLC
+.C:97c5  71 0E       ADC ($0E),Y
+.C:97c7  95 6E       STA sprite_3_x_lo,X
+.C:97c9  E8          INX
+.C:97ca  C8          INY
+.C:97cb  E0 08       CPX #$08
+.C:97cd  D0 E1       BNE $97B0
+.C:97cf  A2 00       LDX #$00
+.C:97d1  A0 00       LDY #$00
+.C:97d3  B1 0E       LDA ($0E),Y
+.C:97d5  C6 1E       DEC $1E
+.C:97d7  30 05       BMI $97DE
+.C:97d9  49 FF       EOR #$FF
+.C:97db  18          CLC
+.C:97dc  69 01       ADC #$01
+.C:97de  85 1F       STA $1F
+.C:97e0  A9 FF       LDA #$FF
+.C:97e2  85 20       STA $20
+.C:97e4  A5 1F       LDA $1F
+.C:97e6  C9 80       CMP #$80
+.C:97e8  B0 04       BCS $97EE
+.C:97ea  A9 00       LDA #$00
+.C:97ec  85 20       STA $20
+.C:97ee  A5 1F       LDA $1F
+.C:97f0  18          CLC
+.C:97f1  65 53       ADC $53
+.C:97f3  95 16       STA score_low,X
+.C:97f5  A5 20       LDA $20
+.C:97f7  65 54       ADC $54
+.C:97f9  95 17       STA $17,X
+.C:97fb  E8          INX
+.C:97fc  C8          INY
+.C:97fd  E8          INX
+.C:97fe  C8          INY
+.C:97ff  E0 08       CPX #$08
+.C:9800  08          PHP
+.C:9801  D0 D0       BNE $97D3
+.C:9803  A5 17       LDA $17
+.C:9805  29 01       AND #$01
+.C:9807  85 17       STA $17
+.C:9809  A5 19       LDA $19
+.C:980b  29 01       AND #$01
+.C:980d  0A          ASL A
+.C:980e  05 17       ORA $17
+.C:9810  85 17       STA $17
+.C:9812  A5 1B       LDA $1B
+.C:9814  29 01       AND #$01
+.C:9816  0A          ASL A
+.C:9817  0A          ASL A
+.C:9818  05 17       ORA $17
+.C:981a  85 17       STA $17
+.C:981c  A5 1D       LDA $1D
+.C:981e  29 01       AND #$01
+.C:9820  0A          ASL A
+.C:9821  0A          ASL A
+.C:9822  0A          ASL A
+.C:9823  05 17       ORA $17
+.C:9825  0A          ASL A
+.C:9826  0A          ASL A
+.C:9827  0A          ASL A
+.C:9828  85 78       STA sprites_x_hi_combined
+.C:982a  A2 03       LDX #$03
+sprite_loop:
+.C:982c  20 42 98    JSR sprite_processing_1
+.C:982f  20 15 99    JSR sprite_processing_2
+.C:9832  20 EA 99    JSR sprite_mask_1
+.C:9835  20 3B 9A    JSR sprite_mask_2
+.C:9838  E8          INX
+.C:9839  E0 07       CPX #$07
+.C:983b  D0 EF       BNE sprite_loop
+.C:983d  A9 FF       LDA #$FF
+.C:983f  85 79       STA $79
+exit:
+.C:9841  60          RTS
+;======================================
+temp = $16
+
+sprite_processing_1:
+.C:9842  48          PHA
+.C:9843  8A          TXA
+.C:9844  48          PHA
+.C:9845  98          TYA
+.C:9846  48          PHA
+.C:9847  86 16       STX temp
+.C:9849  8A          TXA
+.C:984a  0A          ASL A
+.C:984b  AA          TAX
+.C:984c  BD BC 98    LDA $98BC,X
+.C:984f  85 0E       STA $0E
+.C:9851  BD BD 98    LDA $98BD,X
+.C:9854  85 0F       STA $0F
+.C:9856  A5 78       LDA sprites_x_hi_combined
+.C:9858  A6 16       LDX temp
+.C:985a  F0 04       BEQ $9860
+.C:985c  4A          LSR A
+.C:985d  CA          DEX
+.C:985e  D0 FC       BNE $985C
+.C:9860  29 01       AND #$01
+.C:9862  85 17       STA $17
+.C:9864  A5 16       LDA temp
+.C:9866  C9 07       CMP #$07
+.C:9868  D0 0A       BNE $9874
+.C:986a  A5 4A       LDA $4A
+.C:986c  29 03       AND #$03
+.C:986e  18          CLC
+.C:986f  69 08       ADC #$08
+.C:9871  4C 76 98    JMP $9876
+.C:9874  A5 4A       LDA $4A
+.C:9876  0A          ASL A
+.C:9877  A8          TAY
+.C:9878  A5 16       LDA temp
+.C:987a  0A          ASL A
+.C:987b  AA          TAX
+.C:987c  B5 68       LDA $68,X
+.C:987e  38          SEC
+.C:987f  F9 2F 9B    SBC $9B2F,Y
+.C:9882  85 16       STA temp
+.C:9884  A5 17       LDA $17
+.C:9886  F9 30 9B    SBC $9B30,Y
+.C:9889  90 05       BCC $9890
+.C:988b  A9 18       LDA #$18
+.C:988d  4C 9D 98    JMP $989D
+.C:9890  A5 16       LDA temp
+.C:9892  49 FF       EOR #$FF
+.C:9894  18          CLC
+.C:9895  69 01       ADC #$01
+.C:9897  C9 18       CMP #$18
+.C:9899  90 02       BCC $989D
+.C:989b  A9 17       LDA #$17
+.C:989d  AA          TAX
+.C:989e  A0 00       LDY #$00
+.C:98a0  BD CC 98    LDA $98CC,X
+.C:98a3  91 0E       STA ($0E),Y
+.C:98a5  C8          INY
+.C:98a6  BD E4 98    LDA $98E4,X
+.C:98a9  91 0E       STA ($0E),Y
+.C:98ab  C8          INY
+.C:98ac  BD FC 98    LDA $98FC,X
+.C:98af  91 0E       STA ($0E),Y
+.C:98b1  C8          INY
+.C:98b2  C0 3F       CPY #$3F
+.C:98b4  D0 EA       BNE $98A0
+.C:98b6  68          PLA
+.C:98b7  A8          TAY
+.C:98b8  68          PLA
+.C:98b9  AA          TAX
+.C:98ba  68          PLA
+.C:98bb  60          RTS
+;======================================
+temp = $16
+
+sprite_processing_2:
+.C:9915  48          PHA
+.C:9916  8A          TXA
+.C:9917  48          PHA
+.C:9918  98          TYA
+.C:9919  48          PHA
+.C:991a  86 16       STX temp
+.C:991c  8A          TXA
+.C:991d  0A          ASL A
+.C:991e  AA          TAX
+.C:991f  BD BC 98    LDA $98BC,X
+.C:9922  85 0E       STA $0E
+.C:9924  BD BD 98    LDA $98BD,X
+.C:9927  85 0F       STA $0F
+.C:9929  A5 78       LDA sprites_x_hi_combined
+.C:992b  A6 16       LDX temp
+.C:992d  F0 04       BEQ $9933
+.C:992f  4A          LSR A
+.C:9930  CA          DEX
+.C:9931  D0 FC       BNE $992F
+.C:9933  29 01       AND #$01
+.C:9935  85 17       STA $17
+.C:9937  A5 16       LDA temp
+.C:9939  C9 07       CMP #$07
+.C:993b  D0 0A       BNE $9947
+.C:993d  A5 4A       LDA $4A
+.C:993f  29 03       AND #$03
+.C:9941  18          CLC
+.C:9942  69 08       ADC #$08
+.C:9944  4C 59 99    JMP $9959
+.C:9947  A5 4B       LDA filename_index
+.C:9949  C9 03       CMP #$03
+.C:994b  D0 0A       BNE $9957
+.C:994d  A5 4A       LDA $4A
+.C:994f  29 03       AND #$03
+.C:9951  18          CLC
+.C:9952  69 0C       ADC #$0C
+.C:9954  4C 59 99    JMP $9959
+.C:9957  A5 4A       LDA $4A
+.C:9959  0A          ASL A
+.C:995a  A8          TAY
+.C:995b  A5 16       LDA temp
+.C:995d  0A          ASL A
+.C:995e  AA          TAX
+.C:995f  B5 68       LDA $68,X
+.C:9961  38          SEC
+.C:9962  F9 07 9B    SBC $9B07,Y
+.C:9965  85 16       STA temp
+.C:9967  A5 17       LDA $17
+.C:9969  F9 08 9B    SBC $9B08,Y
+.C:996c  B0 05       BCS $9973
+.C:996e  A9 18       LDA #$18
+.C:9970  4C 7B 99    JMP $997B
+.C:9973  A5 16       LDA temp
+.C:9975  C9 17       CMP #$17
+.C:9977  90 02       BCC $997B
+.C:9979  A9 17       LDA #$17
+.C:997b  AA          TAX
+.C:997c  A0 00       LDY #$00
+.C:997e  B1 0E       LDA ($0E),Y
+.C:9980  3D A0 99    AND $99A0,X
+.C:9983  91 0E       STA ($0E),Y
+.C:9985  C8          INY
+.C:9986  B1 0E       LDA ($0E),Y
+.C:9988  3D B8 99    AND $99B8,X
+.C:998b  91 0E       STA ($0E),Y
+.C:998d  C8          INY
+.C:998e  B1 0E       LDA ($0E),Y
+.C:9990  3D D1 99    AND $99D1,X
+.C:9993  91 0E       STA ($0E),Y
+.C:9995  C8          INY
+.C:9996  C0 3F       CPY #$3F
+.C:9998  D0 E4       BNE $997E
+.C:999a  68          PLA
+.C:999b  A8          TAY
+.C:999c  68          PLA
+.C:999d  AA          TAX
+.C:999e  68          PLA
+.C:999f  60          RTS
+;======================================
+temp = $16
+sprite_mask_1:
+.C:99ea  48          PHA
+.C:99eb  8A          TXA
+.C:99ec  48          PHA
+.C:99ed  98          TYA
+.C:99ee  48          PHA
+.C:99ef  86 16       STX temp
+.C:99f1  8A          TXA
+.C:99f2  0A          ASL A
+.C:99f3  AA          TAX
+.C:99f4  BD BC 98    LDA $98BC,X
+.C:99f7  85 0E       STA $0E
+.C:99f9  BD BD 98    LDA $98BD,X
+.C:99fc  85 0F       STA $0F
+.C:99fe  A4 4A       LDY $4A
+.C:9a00  A5 16       LDA temp
+.C:9a02  0A          ASL A
+.C:9a03  AA          TAX
+.C:9a04  B5 69       LDA $69,X
+.C:9a06  38          SEC
+.C:9a07  F9 91 9A    SBC $9A91,Y
+.C:9a0a  B0 29       BCS exit
+.C:9a0c  49 FF       EOR #$FF
+.C:9a0e  18          CLC
+.C:9a0f  69 01       ADC #$01
+.C:9a11  85 16       STA temp
+.C:9a13  A2 00       LDX #$00
+.C:9a15  A0 00       LDY #$00
+loop:
+.C:9a17  E4 16       CPX temp
+.C:9a19  F0 1A       BEQ exit
+.C:9a1b  B1 0E       LDA ($0E),Y
+.C:9a1d  29 00       AND #$00
+.C:9a1f  91 0E       STA ($0E),Y
+.C:9a21  C8          INY
+.C:9a22  B1 0E       LDA ($0E),Y
+.C:9a24  29 00       AND #$00
+.C:9a26  91 0E       STA ($0E),Y
+.C:9a28  C8          INY
+.C:9a29  B1 0E       LDA ($0E),Y
+.C:9a2b  29 00       AND #$00
+.C:9a2d  91 0E       STA ($0E),Y
+.C:9a2f  E8          INX
+.C:9a30  C8          INY
+.C:9a31  C0 3F       CPY #$3F
+.C:9a33  D0 E2       BNE loop
+exit:
+.C:9a35  68          PLA
+.C:9a36  A8          TAY
+.C:9a37  68          PLA
+.C:9a38  AA          TAX
+.C:9a39  68          PLA
+.C:9a3a  60          RTS
+;======================================
+temp = $16
+
+sprite_mask_2:
+.C:9a3b  48          PHA
+.C:9a3c  8A          TXA
+.C:9a3d  48          PHA
+.C:9a3e  98          TYA
+.C:9a3f  48          PHA
+.C:9a40  86 16       STX temp
+.C:9a42  8A          TXA
+.C:9a43  0A          ASL A
+.C:9a44  AA          TAX
+.C:9a45  BD BC 98    LDA $98BC,X
+.C:9a48  85 0E       STA $0E
+.C:9a4a  BD BD 98    LDA $98BD,X
+.C:9a4d  85 0F       STA $0F
+.C:9a4f  A4 4A       LDY $4A
+.C:9a51  A5 16       LDA temp
+.C:9a53  0A          ASL A
+.C:9a54  AA          TAX
+.C:9a55  B9 99 9A    LDA $9A99,Y
+.C:9a58  38          SEC
+.C:9a59  F5 69       SBC $69,X
+.C:9a5b  B0 2E       BCS exit
+.C:9a5d  49 FF       EOR #$FF
+.C:9a5f  18          CLC
+.C:9a60  69 01       ADC #$01
+.C:9a62  85 16       STA temp
+.C:9a64  A2 14       LDX #$14
+.C:9a66  A0 00       LDY #$00
+loop:
+.C:9a68  E4 16       CPX temp
+.C:9a6a  90 05       BCC $9A71
+.C:9a6c  C8          INY
+.C:9a6d  C8          INY
+.C:9a6e  4C 85 9A    JMP $9A85
+.C:9a71  B1 0E       LDA ($0E),Y
+.C:9a73  29 00       AND #$00
+.C:9a75  91 0E       STA ($0E),Y
+.C:9a77  C8          INY
+.C:9a78  B1 0E       LDA ($0E),Y
+.C:9a7a  29 00       AND #$00
+.C:9a7c  91 0E       STA ($0E),Y
+.C:9a7e  C8          INY
+.C:9a7f  B1 0E       LDA ($0E),Y
+.C:9a81  29 00       AND #$00
+.C:9a83  91 0E       STA ($0E),Y
+.C:9a85  CA          DEX
+.C:9a86  C8          INY
+.C:9a87  C0 3F       CPY #$3F
+.C:9a89  D0 DD       BNE loop
+exit:
+.C:9a8b  68          PLA
+.C:9a8c  A8          TAY
+.C:9a8d  68          PLA
+.C:9a8e  AA          TAX
+.C:9a8f  68          PLA
+.C:9a90  60          RTS
+;======================================
+.C:9a91  30 30       BMI $9AC3
+.C:9a93  30 30       BMI $9AC5
+.C:9a95  42          JAM
+.C:9a96  3A          NOOP
+.C:9a97  42          JAM
+.C:9a98  03 90       SLO ($90,X)
+.C:9a9a  90 90       BCC $9A2C
+.C:9a9c  90 41       BCC $9ADF
+.C:9a9e  44 44       NOOP $44
+.C:9aa0  35 
+;=====================================================
+.C:9aa1  A5 54       LDA $54
+.C:9aa3  C9 02       CMP #$02
+.C:9aa5  F0 15       BEQ $9ABC
+.C:9aa7  A5 4A       LDA $4A
+.C:9aa9  0A          ASL A
+.C:9aaa  AA          TAX
+.C:9aab  A5 53       LDA $53
+.C:9aad  38          SEC
+.C:9aae  FD F7 9A    SBC $9AF7,X
+.C:9ab1  A5 54       LDA $54
+.C:9ab3  FD F8 9A    SBC $9AF8,X
+.C:9ab6  90 08       BCC $9AC0
+.C:9ab8  A9 02       LDA #$02
+.C:9aba  85 54       STA $54
+.C:9abc  38          SEC
+.C:9abd  4C CB 9A    JMP $9ACB
+.C:9ac0  A5 54       LDA $54
+.C:9ac2  D0 06       BNE $9ACA
+.C:9ac4  A5 53       LDA $53
+.C:9ac6  C9 4A       CMP #$4A
+.C:9ac8  90 EE       BCC $9AB8
+.C:9aca  18          CLC
+.C:9acb  60          RTS
+;=====================================================
+.C:9acc  A5 54       LDA $54
+.C:9ace  C9 02       CMP #$02
+.C:9ad0  F0 15       BEQ $9AE7
+.C:9ad2  A5 4A       LDA $4A
+.C:9ad4  0A          ASL A
+.C:9ad5  AA          TAX
+.C:9ad6  A5 53       LDA $53
+.C:9ad8  38          SEC
+.C:9ad9  FD 27 9B    SBC $9B27,X
+.C:9adc  A5 54       LDA $54
+.C:9ade  FD 28 9B    SBC $9B28,X
+.C:9ae1  90 08       BCC $9AEB
+.C:9ae3  A9 02       LDA #$02
+.C:9ae5  85 54       STA $54
+.C:9ae7  38          SEC
+.C:9ae8  4C F6 9A    JMP $9AF6
+.C:9aeb  A5 54       LDA $54
+.C:9aed  D0 06       BNE $9AF5
+.C:9aef  A5 53       LDA $53
+.C:9af1  C9 60       CMP #$60
+.C:9af3  90 EE       BCC $9AE3
+.C:9af5  18          CLC
+.C:9af6  60          RTS
+;=====================================================
+.C:9b6c  01 00       ORA ($00,X)
+.C:9b6e  60          RTS
+;=====================================================
+finish_scene:
+.C:9b6f  A9 00       LDA #$00
+.C:9b71  85 2F       STA selected_line_display_timer
+.C:9b73  85 30       STA character_line_display_timer
+.C:9b75  85 2D       STA gun_holstered_timer
+.C:9b77  85 89       STA $89
+.C:9b79  A5 62       LDA character_animation_state
+.C:9b7b  C9 02       CMP #$02
+.C:9b7d  D0 0E       BNE $9B8D
+.C:9b7f  A5 63       LDA character_animation_delay
+.C:9b81  D0 07       BNE $9B8A
+.C:9b83  20 5A 82    JSR clear_text_area
+.C:9b86  A9 03       LDA #$03
+.C:9b88  85 62       STA character_animation_state
+:
+.C:9b8a  4C 5F 9D    JMP $9D5F
+:
+.C:9b8d  A5 62       LDA character_animation_state
+.C:9b8f  C9 03       CMP #$03
+.C:9b91  D0 F7       BNE $9B8A
+.C:9b93  A5 5F       LDA character_state
+.C:9b95  C9 07       CMP #$07
+.C:9b97  D0 05       BNE $9B9E
+.C:9b99  A9 03       LDA #$03
+.C:9b9b  4C DE 9B    JMP $9BDE
+:
+.C:9b9e  A5 87       LDA scene_number
+.C:9ba0  18          CLC
+.C:9ba1  69 01       ADC #$01
+.C:9ba3  C5 8F       CMP interactions_completed
+.C:9ba5  D0 E3       BNE $9B8A
+.C:9ba7  C9 04       CMP #$04
+.C:9ba9  D0 1F       BNE $9BCA
+.C:9bab  A5 8C       LDA $8C
+.C:9bad  10 06       BPL $9BB5
+.C:9baf  A9 00       LDA #$00
+.C:9bb1  85 8F       STA interactions_completed
+.C:9bb3  F0 15       BEQ $9BCA
+.C:9bb5  A2 06       LDX #$06
+;"Please turn disk over and press button."
+.C:9bb7  A9 13       LDA #$13
+.C:9bb9  20 B1 5A    JSR print_common_phrase
+.C:9bbc  A9 04       LDA #$04
+.C:9bbe  20 8F 5A    JSR delay
+.C:9bc1  20 8E 8A    JSR scan_input_controllers
+.C:9bc4  A5 3A       LDA joystick_button_state
+.C:9bc6  F0 F9       BEQ $9BC1
+.C:9bc8  A9 04       LDA #$04
+.C:9bca  85 87       STA scene_number
+.C:9bcc  A5 87       LDA scene_number
+.C:9bce  C9 0B       CMP #$0B
+.C:9bd0  D0 07       BNE setup_scene
+.C:9bd2  A9 FF       LDA #$FF
+.C:9bd4  85 88       STA $88
+.C:9bd6  4C 4D 9D    JMP init_character
+;=====================================================
+setup_scene:
+.C:9bd9  A6 87       LDX scene_number
+.C:9bdb  BD 3F 9D    LDA filename_indexes_for_scene,X
+:
+.C:9bde  85 4B       STA filename_index
+.C:9be0  A9 FF       LDA #$FF
+.C:9be2  85 66       STA $66
+.C:9be4  A5 4C       LDA gun_draw_crosshair_counter
+.C:9be6  F0 04       BEQ $9BEC
+;Holster the gun
+.C:9be8  A9 04       LDA #$04
+.C:9bea  85 4D       STA gun_holster_counter
+:
+.C:9bec  A9 A0       LDA #$A0
+.C:9bee  85 3B       STA crosshair_sprite_x_lo
+.C:9bf0  8D 02 D0    STA sprite1_x_lo_register
+.C:9bf3  8D 04 D0    STA sprite2_x_lo_register
+.C:9bf6  A9 00       LDA #$00
+.C:9bf8  85 3C       STA crosshair_sprite_x_hi
+.C:9bfa  A9 B3       LDA #$B3
+.C:9bfc  85 3D       STA crosshair_sprite_y
+.C:9bfe  8D 03 D0    STA sprite1_y_register
+.C:9bfe  8D 03 D0    STA sprite1_y_register
+.C:9c01  8D 05 D0    STA sprite2_y_register
+.C:9c04  AD 15 D0    LDA vic_sprite_enable_register
+.C:9c07  29 F9       AND #$F9
+.C:9c09  8D 15 D0    STA vic_sprite_enable_register
+.C:9c0c  A9 00       LDA #$00
+.C:9c0e  85 31       STA $31
+.C:9c10  85 32       STA $32
+.C:9c12  85 3A       STA joystick_button_state
+.C:9c14  85 39       STA joystick_direction_state
+.C:9c16  85 4C       STA gun_draw_crosshair_counter
+.C:9c18  85 4E       STA $4E
+.C:9c1a  8D 50 7D    STA $7D50
+.C:9c1d  AD 51 7D    LDA $7D51
+.C:9c20  F0 1B       BEQ $9C3D
+;---------------------------------------
+major_loop:
+.C:9c22  A0 08       LDY #$08
+outer_loop:
+.C:9c24  A2 1E       LDX #$1E
+inner_loop:
+.C:9c26  CA          DEX
+.C:9c27  D0 FD       BNE inner_loop
+raster_loop:
+.C:9c29  AD 12 D0    LDA vic_raster_compare_register
+.C:9c2c  C9 81       CMP #$81
+.C:9c2e  D0 F9       BNE raster_loop
+.C:9c30  88          DEY
+.C:9c31  D0 F1       BNE outer_loop
+.C:9c33  AD 52 7D    LDA $7D52
+.C:9c36  F0 05       BEQ $9C3D
+.C:9c38  CE 52 7D    DEC $7D52
+.C:9c3b  D0 E5       BNE major_loop
+;---------------------------------------
+:
+.C:9c3d  A9 FF       LDA #$FF
+.C:9c3f  85 44       STA $44
+.C:9c41  A9 20       LDA #$20
+.C:9c43  85 53       STA $53
+.C:9c45  A9 02       LDA #$02
+.C:9c47  85 54       STA $54
+.C:9c49  A9 00       LDA #$00
+.C:9c4b  85 6E       STA sprite_3_x_lo
+.C:9c4d  85 70       STA sprite_4_x_lo
+.C:9c4f  85 72       STA sprite_5_x_lo
+.C:9c51  85 74       STA sprite_6_x_lo
+.C:9c53  85 76       STA sprite_7_x_lo
+.C:9c55  8D 06 D0    STA sprite3_x_lo_register
+.C:9c58  8D 08 D0    STA sprite4_x_lo_register
+.C:9c5b  8D 0A D0    STA sprite5_x_lo_register
+.C:9c5e  8D 0C D0    STA sprite6_x_lo_register
+.C:9c61  85 40       STA $40
+.C:9c63  85 41       STA $41
+.C:9c65  8D 15 D0    STA vic_sprite_enable_register
+.C:9c68  A5 78       LDA sprites_x_hi_combined
+.C:9c6a  29 81       AND #$81
+.C:9c6c  85 78       STA sprites_x_hi_combined
+.C:9c6e  8D 10 D0    STA sprites_x_hi_combined_reg
+.C:9c71  A5 5F       LDA character_state
+.C:9c73  C9 07       CMP #$07
+.C:9c75  F0 0C       BEQ $9C83
+.C:9c77  A5 4A       LDA $4A
+.C:9c79  18          CLC
+.C:9c7a  69 01       ADC #$01
+.C:9c7c  29 03       AND #$03
+.C:9c7e  85 4A       STA $4A
+.C:9c80  20 5E 54    JSR setup_background
+.C:9c83  AD 12 D0    LDA vic_raster_compare_register
+.C:9c86  C9 C0       CMP #$C0
+.C:9c88  B0 F9       BCS $9C83
+.C:9c8a  A2 00       LDX #$00
+.C:9c8c  8E 1A D0    STX vic_irq_mask_register
+.C:9c8f  20 E8 9C    JSR restore_kernal_vectors
+.C:9c92  A5 8C       LDA $8C
+.C:9c94  30 0D       BMI stop_sound
+.C:9c96  A5 87       LDA scene_number
+.C:9c98  C9 0D       CMP #$0D
+.C:9c9a  F0 07       BEQ stop_sound
+;"Put that gun away, mister"
+.C:9c9c  A9 1B       LDA #$1B
+.C:9c9e  A2 06       LDX #$06
+.C:9ca0  20 B1 5A    JSR print_common_phrase
+stop_sound:
+.C:9ca3  20 00 7B    JSR stop_sound
+.C:9ca6  20 AB 9D    JSR load_file_from_disk
+.C:9ca9  A9 02       LDA #$02
+.C:9cab  85 8E       STA $8E
+.C:9cad  A2 1F       LDX #$1F
+.C:9caf  BD C8 9C    LDA $9CC8,X
+.C:9cb2  9D 30 FD    STA $FD30,X
+.C:9cb5  CA          DEX
+.C:9cb6  10 F7       BPL $9CAF
+.C:9cb8  A2 78       LDX #$78
+.C:9cba  A9 0F       LDA #$0F
+.C:9cbc  9D 6F DB    STA $DB6F,X
+.C:9cbf  CA          DEX
+.C:9cc0  D0 F8       BNE $9CBA
+.C:9cc2  20 5A 82    JSR clear_text_area
+.C:9cc5  4C 17 9D    JMP $9D17
+;======================================
+.C:9cc8  FF FD 30    ISB $30FD,X
+.C:9ccb  55 00       EOR $00,X
+.C:9ccd  9A          TXS
+.C:9cce  30 1C       BMI $9CEC
+.C:9cd0  30 68       BMI $9D3A
+.C:9cd2  02          JAM
+.C:9cd3  98          TYA
+.C:9cd4  30 00       BMI $9CD6
+.C:9cd6  10 21       BPL $9CF9
+.C:9cd8  00          BRK
+.C:9cd9  55 30       EOR $30,X
+.C:9cdb  15 30       ORA $30,X
+.C:9cdd  21 00       AND ($00,X)
+.C:9cdf  4C 30 AD    JMP $AD30
+.C:9ce2  30 00       BMI $9CE4
+.C:9ce4  10 21       BPL setup_raster_irq
+.C:9ce6  00          BRK
+.C:9ce7  4E A9 EA    LSR $EAA9
+;======================================
+restore_kernal_vectors:
+;Set IRQ vector to $EA31 (original IRQ handler)
+.C:9ce8  A9 EA       LDA #$EA
+.C:9cea  8D 15 03    STA >irq_vector
+.C:9ced  A9 31       LDA #$31
+.C:9cef  8D 14 03    STA <irq_vector
+;Set Kernal STOP vector to $F6ED (original routine)
+.C:9cf2  A9 F6       LDA #$F6
+.C:9cf4  8D 29 03    STA $0329
+.C:9cf7  A9 ED       LDA #$ED
+.C:9cf9  8D 28 03    STA $0328
+;Set Kernal LOAD vector to $F4A5 (different entry point of original routine)
+.C:9cfc  A9 F4       LDA #$F4
+.C:9cfe  8D 31 03    STA $0331
+.C:9d01  A9 A5       LDA #$A5
+.C:9d03  8D 30 03    STA $0330
+.C:9d06  60          RTS
+;======================================
+setup_raster_irq:
+;Set IRQ vector to $8087
+.C:9d07  A9 80       LDA #$80
+.C:9d09  8D 15 03    STA >irq_vector
+.C:9d0c  A9 87       LDA #$87
+.C:9d0e  8D 14 03    STA <irq_vector
+;Set IRQ raster line to #FA
+.C:9d11  A9 FA       LDA #$FA
+.C:9d13  8D 12 D0    STA vic_raster_compare_register
+.C:9d16  60          RTS
+;======================================
+.C:9d17  20 07 9D    JSR setup_raster_irq
+.C:9d1a  A5 87       LDA scene_number
+.C:9d1c  C9 0D       CMP #$0D
+.C:9d1e  F0 2D       BEQ init_character
+.C:9d20  A6 4B       LDX filename_index
+.C:9d22  BD 00 53    LDA $5300,X
+.C:9d25  85 86       STA $86
+.C:9d27  BD 33 9D    LDA $9D33,X
+.C:9d2a  8D 99 7E    STA $7E99
+.C:9d2d  8D 9A 7E    STA $7E9A
+.C:9d30  4C 4D 9D    JMP init_character
+;--------------------------------------
+9d33  0F 0C 0A 08 08 08 08 07 06 05 04 03 00
+;--------------------------------------
+filename_indexes_for_scene = $9d3f:
+9d3f 00 02 01 06 07 04 05 08 09 0a 0b 00
+;--------------------------------------
+;======================================
+init_character:
+.C:9d4d  A9 00       LDA #$00
+.C:9d4f  85 67       STA $67
+;Set character's state to #0A (walking left)
+.C:9d51  A9 0A       LDA #$0A
+.C:9d53  20 1C 9E    JSR set_character_state
+.C:9d56  A9 01       LDA #$01
+.C:9d58  8D 1A D0    STA vic_irq_mask_register
+.C:9d5b  A9 00       LDA #$00
+.C:9d5d  85 66       STA $66
+.C:9d5f  60          RTS
+;======================================
+.C:9d60  A5 5B       LDA $5B
+.C:9d62  18          CLC
+.C:9d63  69 B0       ADC #$B0
+.C:9d65  85 03       STA $03
+.C:9d67  A9 00       LDA #$00
+.C:9d69  85 02       STA $02
+.C:9d6b  A0 00       LDY #$00
+.C:9d6d  B1 02       LDA ($02),Y
+.C:9d6f  AA          TAX
+.C:9d70  BD 5E 53    LDA $535E,X
+.C:9d73  39 C2 0E    AND $0EC2,Y
+.C:9d76  99 02 7F    STA $7F02,Y
+.C:9d79  C8          INY
+.C:9d7a  B1 02       LDA ($02),Y
+.C:9d7c  AA          TAX
+.C:9d7d  BD 5E 53    LDA $535E,X
+.C:9d80  39 C0 0E    AND $0EC0,Y
+.C:9d83  99 00 7F    STA $7F00,Y
+.C:9d86  C8          INY
+.C:9d87  B1 02       LDA ($02),Y
+.C:9d89  AA          TAX
+.C:9d8a  BD 5E 53    LDA $535E,X
+.C:9d8d  39 BE 0E    AND $0EBE,Y
+.C:9d90  99 FE 7E    STA $7EFE,Y
+.C:9d93  C8          INY
+.C:9d94  98          TYA
+.C:9d95  29 3F       AND #$3F
+.C:9d97  C9 3F       CMP #$3F
+.C:9d99  D0 01       BNE $9D9C
+.C:9d9b  C8          INY
+.C:9d9c  C0 00       CPY #$00
+.C:9d9e  D0 CD       BNE $9D6D
+.C:9da0  60          RTS
+.C:9da1  A5 4B       LDA filename_index
+.C:9da3  C9 03       CMP #$03
+.C:9da5  F0 35       BEQ $9DDC
+.C:9da7  E6 8F       INC interactions_completed
+.C:9da9  D0 31       BNE $9DDC
+
+;======================================
+filename_ptr_lo = $9DEA
+filename_ptr_hi = $9DEB
+filename_index = $4b
+
+attempt_counter = $16
+load_file_from_disk:
+.C:9dab  A9 00       LDA #$00
+.C:9dad  85 9D       STA $9D
+.C:9daf  A9 04       LDA #$04
+.C:9db1  85 16       STA attempt_counter
+load_attempt:
+.C:9db3  A9 08       LDA #$08
+.C:9db5  A2 08       LDX #$08
+.C:9db7  A0 01       LDY #$01
+.C:9db9  20 BA FF    JSR SETLFS
+;Load filename pointer lo/hi into .X, .Y
+.C:9dbc  A5 4B       LDA filename_index
+.C:9dbe  0A          ASL A
+.C:9dbf  AA          TAX
+.C:9dc0  BD EB 9D    LDA filename_ptr_hi,X
+.C:9dc3  A8          TAY
+.C:9dc4  BD EA 9D    LDA filename_ptr_lo,X
+.C:9dc7  AA          TAX
+;Is it the long filename? ("ACCOLADE INC.")
+.C:9dc8  A5 4B       LDA filename_index
+.C:9dca  C9 0C       CMP #$0C
+.C:9dcc  D0 04       BNE single_char_filename
+;It is, set its filename length
+.C:9dce  A9 0C       LDA #$0C
+.C:9dd0  D0 02       BNE set_filename_to_load
+;It's not, then it's just one char (all other filenames are one char long)
+single_char_filename:
+.C:9dd2  A9 01       LDA #$01
+set_filename_to_load:
+.C:9dd4  20 BD FF    JSR SETNAM
+.C:9dd7  A9 00       LDA #$00
+.C:9dd9  20 D5 FF    JSR LOAD
+;Were there any errors on the load operation? If not, exit
+.C:9ddc  A5 90       LDA $90
+.C:9dde  F0 09       BEQ exit
+;Errors encountered, try again
+.C:9de0  C6 16       DEC attempt_counter
+.C:9de2  10 CF       BPL load_attempt
+return_value = $9de5
+.C:9de4  A9 00       LDA return_value		;Inlined
+.C:9de6  EE E5 9D    INC return_value
+exit:
+.C:9de9  60          RTS
+;======================================
+set_character_state:
+.C:9e1c  85 5F       STA character_state
+.C:9e1e  A9 00       LDA #$00
+.C:9e20  85 62       STA character_animation_state
+.C:9e22  A9 FF       LDA #$FF
+.C:9e24  85 60       STA $60
+.C:9e26  60          RTS
+;======================================
+set_character_stance:
+.C:9e27  48          PHA
+.C:9e28  A5 61       LDA character_stance
+.C:9e2a  D0 04       BNE exit
+.C:9e2c  A9 FE       LDA #$FE
+.C:9e2e  85 60       STA $60
+exit:
+.C:9e30  68          PLA
+.C:9e31  85 61       STA character_stance
+.C:9e33  60          RTS
+;======================================
+.C:dc40  A2 00       LDX #$00
+.C:dc42  20 45 DD    JSR $DD45
+.C:dc45  8A          TXA
+.C:dc46  18          CLC
+.C:dc47  69 07       ADC #$07
+.C:dc49  AA          TAX
+.C:dc4a  E0 15       CPX #$15
+.C:dc4c  90 F4       BCC $DC42
+.C:dc4e  AD 6E 7D    LDA $7D6E
+.C:dc51  0D 75 7D    ORA $7D75
+.C:dc54  0D 7C 7D    ORA $7D7C
+.C:dc57  D0 72       BNE $DCCB
+.C:dc59  18          CLC
+.C:dc5a  A0 01       LDY #$01
+.C:dc5c  6D 58 7D    ADC $7D58
+.C:dc5f  CC 58 7D    CPY $7D58
+.C:dc62  F0 14       BEQ $DC78
+.C:dc64  6D 5F 7D    ADC $7D5F
+.C:dc67  CC 5F 7D    CPY $7D5F
+.C:dc6a  F0 0C       BEQ $DC78
+.C:dc6c  6D 66 7D    ADC $7D66
+.C:dc6f  CC 66 7D    CPY $7D66
+.C:dc72  F0 04       BEQ $DC78
+.C:dc74  C9 0C       CMP #$0C
+.C:dc76  90 53       BCC $DCCB
+.C:dc78  A2 0E       LDX #$0E
+.C:dc7a  A9 01       LDA #$01
+.C:dc7c  BC 58 7D    LDY $7D58,X
+.C:dc7f  F0 03       BEQ $DC84
+.C:dc81  9D 58 7D    STA $7D58,X
+.C:dc84  9D 6E 7D    STA $7D6E,X
+.C:dc87  A9 C0       LDA #$C0
+.C:dc89  9D 6F 7D    STA $7D6F,X
+.C:dc8c  8A          TXA
+.C:dc8d  F0 1B       BEQ $DCAA
+.C:dc8f  20 B6 DF    JSR $DFB6
+.C:dc92  A8          TAY
+.C:dc93  20 B6 DF    JSR $DFB6
+.C:dc96  C0 FF       CPY #$FF
+.C:dc98  B0 0C       BCS $DCA6
+.C:dc9a  29 C0       AND #$C0
+.C:dc9c  DD 67 7C    CMP $7C67,X
+.C:dc9f  B0 05       BCS $DCA6
+.C:dca1  9D 6F 7D    STA $7D6F,X
+.C:dca4  90 03       BCC $DCA9
+.C:dca6  20 C3 DD    JSR $DDC3
+.C:dca9  8A          TXA
+.C:dcaa  38          SEC
+.C:dcab  E9 07       SBC #$07
+.C:dcad  AA          TAX
+.C:dcae  10 CA       BPL $DC7A
+.C:dcb0  AD 7D 7D    LDA $7D7D
+.C:dcb3  D0 16       BNE $DCCB
+.C:dcb5  A2 0E       LDX #$0E
+.C:dcb7  20 B6 DF    JSR $DFB6
+.C:dcba  A8          TAY
+.C:dcbb  20 B6 DF    JSR $DFB6
+.C:dcbe  C0 FF       CPY #$FF
+.C:dcc0  B0 0A       BCS $DCCC
+.C:dcc2  29 C0       AND #$C0
+.C:dcc4  C9 40       CMP #$40
+.C:dcc6  D0 04       BNE $DCCC
+.C:dcc8  8D 7D 7D    STA $7D7D
+.C:dccb  60          RTS
+.C:dccc  4C C3 DD    JMP $DDC3
+;======================================
+.C:dccf  A9 80       LDA #$80
+.C:dcd1  8D 6D 7D    STA $7D6D
+.C:dcd4  8D 74 7D    STA $7D74
+.C:dcd7  8D 7B 7D    STA $7D7B
+.C:dcda  20 55 7B    JSR $7B55
+.C:dcdd  8D 7E 7D    STA $7D7E
+.C:dce0  8D 82 7D    STA $7D82
+.C:dce3  20 55 7B    JSR $7B55
+.C:dce6  A8          TAY
+.C:dce7  29 0F       AND #$0F
+.C:dce9  8D 7F 7D    STA $7D7F
+.C:dcec  98          TYA
+.C:dced  4A          LSR A
+.C:dcee  4A          LSR A
+.C:dcef  4A          LSR A
+.C:dcf0  4A          LSR A
+.C:dcf1  8D 52 7D    STA $7D52
+.C:dcf4  A9 00       LDA #$00
+.C:dcf6  A2 14       LDX #$14
+.C:dcf8  8D 81 7D    STA $7D81
+.C:dcfb  9D 54 7D    STA $7D54,X
+.C:dcfe  CA          DEX
+.C:dcff  10 FA       BPL $DCFB
+.C:dd01  20 55 7B    JSR $7B55
+.C:dd04  0A          ASL A
+.C:dd05  B0 11       BCS $DD18
+.C:dd07  0A          ASL A
+.C:dd08  0A          ASL A
+.C:dd09  A8          TAY
+.C:dd0a  A2 07       LDX #$07
+.C:dd0c  20 55 7B    JSR $7B55
+.C:dd0f  99 A4 7D    STA $7DA4,Y
+.C:dd12  C8          INY
+.C:dd13  CA          DEX
+.C:dd14  10 F6       BPL $DD0C
+.C:dd16  30 E9       BMI $DD01
+.C:dd18  AD 56 7B    LDA $7B56
+.C:dd1b  8D 69 7D    STA $7D69
+.C:dd1e  8D 70 7D    STA $7D70
+.C:dd21  8D 77 7D    STA $7D77
+.C:dd24  AD 57 7B    LDA $7B57
+.C:dd27  8D 6A 7D    STA $7D6A
+.C:dd2a  8D 71 7D    STA $7D71
+.C:dd2d  8D 78 7D    STA $7D78
+.C:dd30  AD 7F 7D    LDA $7D7F
+.C:dd33  0E 82 7D    ASL $7D82
+.C:dd36  2A          ROL A
+.C:dd37  38          SEC
+.C:dd38  2A          ROL A
+.C:dd39  8D 57 7D    STA $7D57
+.C:dd3c  8D 5E 7D    STA $7D5E
+.C:dd3f  8D 65 7D    STA $7D65
+.C:dd42  4C 78 DC    JMP $DC78
+;======================================
+.C:dd45  A9 01       LDA #$01
+.C:dd47  8D 84 7D    STA $7D84
+.C:dd4a  8D 82 7D    STA $7D82
+.C:dd4d  BC 6F 7D    LDY $7D6F,X
+.C:dd50  BD 6E 7D    LDA $7D6E,X
+.C:dd53  F0 3D       BEQ $DD92
+.C:dd55  20 B6 DF    JSR $DFB6
+.C:dd58  8D 82 7D    STA $7D82
+.C:dd5b  A8          TAY
+.C:dd5c  20 B6 DF    JSR $DFB6
+.C:dd5f  8D 83 7D    STA $7D83
+.C:dd62  C0 FF       CPY #$FF
+.C:dd64  BC 6F 7D    LDY $7D6F,X
+.C:dd67  90 04       BCC $DD6D
+.C:dd69  A9 80       LDA #$80
+.C:dd6b  D0 26       BNE $DD93
+.C:dd6d  C0 C0       CPY #$C0
+.C:dd6f  29 C0       AND #$C0
+.C:dd71  A8          TAY
+.C:dd72  B0 07       BCS $DD7B
+.C:dd74  DD 6F 7D    CMP $7D6F,X
+.C:dd77  F0 11       BEQ $DD8A
+.C:dd79  90 0F       BCC $DD8A
+.C:dd7b  5D 67 7C    EOR $7C67,X
+.C:dd7e  8D 84 7D    STA $7D84
+.C:dd81  F0 13       BEQ $DD96
+.C:dd83  A9 01       LDA #$01
+.C:dd85  8D 82 7D    STA $7D82
+.C:dd88  D0 08       BNE $DD92
+.C:dd8a  A9 00       LDA #$00
+.C:dd8c  9D 6E 7D    STA $7D6E,X
+.C:dd8f  20 C3 DD    JSR $DDC3
+.C:dd92  98          TYA
+.C:dd93  9D 6F 7D    STA $7D6F,X
+.C:dd96  BD 57 7D    LDA $7D57,X
+.C:dd99  F0 3C       BEQ $DDD7
+.C:dd9b  BD 55 7D    LDA $7D55,X
+.C:dd9e  18          CLC
+.C:dd9f  6D 7E 7D    ADC $7D7E
+.C:dda2  9D 55 7D    STA $7D55,X
+.C:dda5  BD 56 7D    LDA $7D56,X
+.C:dda8  6D 7F 7D    ADC $7D7F
+.C:ddab  9D 56 7D    STA $7D56,X
+.C:ddae  DD 57 7D    CMP $7D57,X
+.C:ddb1  B0 24       BCS $DDD7
+.C:ddb3  AD 84 7D    LDA $7D84
+.C:ddb6  F0 0B       BEQ $DDC3
+.C:ddb8  AD 82 7D    LDA $7D82
+.C:ddbb  C9 FF       CMP #$FF
+.C:ddbd  90 03       BCC $DDC2
+.C:ddbf  4C 69 DE    JMP $DE69
+.C:ddc2  60          RTS
+;======================================
+.C:ddc3  BD 69 7D    LDA $7D69,X
+.C:ddc6  D0 03       BNE $DDCB
+.C:ddc8  DE 6A 7D    DEC $7D6A,X
+.C:ddcb  DE 69 7D    DEC $7D69,X
+.C:ddce  D0 03       BNE $DDD3
+.C:ddd0  DE 6A 7D    DEC $7D6A,X
+.C:ddd3  DE 69 7D    DEC $7D69,X
+.C:ddd6  60          RTS
+;======================================
+.C:ddd7  BC 58 7D    LDY $7D58,X
+.C:ddda  C0 01       CPY #$01
+.C:dddc  D0 0C       BNE $DDEA
+.C:ddde  AD 82 7D    LDA $7D82
+.C:dde1  C9 F0       CMP #$F0
+.C:dde3  B0 03       BCS $DDE8
+.C:dde5  20 9A 7B    JSR $7B9A
+.C:dde8  A0 00       LDY #$00
+.C:ddea  FE 58 7D    INC $7D58,X
+.C:dded  C0 03       CPY #$03
+.C:ddef  90 C2       BCC $DDB3
+.C:ddf1  DE 58 7D    DEC $7D58,X
+.C:ddf4  C0 04       CPY #$04
+.C:ddf6  BD 6E 7D    LDA $7D6E,X
+.C:ddf9  F0 05       BEQ $DE00
+.C:ddfb  AD 84 7D    LDA $7D84
+.C:ddfe  F0 1A       BEQ $DE1A
+.C:de00  B0 10       BCS $DE12
+.C:de02  BD 56 7D    LDA $7D56,X
+.C:de05  38          SEC
+.C:de06  FD 57 7D    SBC $7D57,X
+.C:de09  9D 56 7D    STA $7D56,X
+.C:de0c  FE 58 7D    INC $7D58,X
+.C:de0f  20 9A 7B    JSR $7B9A
+.C:de12  A9 00       LDA #$00
+.C:de14  9D 57 7D    STA $7D57,X
+.C:de17  4C B8 DD    JMP $DDB8
+.C:de1a  BD 56 7D    LDA $7D56,X
+.C:de1d  38          SEC
+.C:de1e  FD 57 7D    SBC $7D57,X
+.C:de21  9D 56 7D    STA $7D56,X
+.C:de24  BD 67 7C    LDA $7C67,X
+.C:de27  9D 6F 7D    STA $7D6F,X
+.C:de2a  AD 82 7D    LDA $7D82
+.C:de2d  29 0F       AND #$0F
+.C:de2f  A8          TAY
+.C:de30  B9 CE DF    LDA $DFCE,Y
+.C:de33  9D 57 7D    STA $7D57,X
+.C:de36  AD 82 7D    LDA $7D82
+.C:de39  C9 F0       CMP #$F0
+.C:de3b  B0 06       BCS $DE43
+.C:de3d  4A          LSR A
+.C:de3e  29 78       AND #$78
+.C:de40  9D 59 7D    STA $7D59,X
+.C:de43  BC 59 7D    LDY $7D59,X
+.C:de46  8C 84 7D    STY $7D84
+.C:de49  A9 00       LDA #$00
+.C:de4b  9D 58 7D    STA $7D58,X
+.C:de4e  E0 0E       CPX #$0E
+.C:de50  AD 50 7D    LDA $7D50
+.C:de53  F0 05       BEQ $DE5A
+.C:de55  90 03       BCC $DE5A
+.C:de57  4C 5D DE    JMP $DE5D
+.C:de5a  20 B8 7B    JSR write_to_sound_registers
+.C:de5d  AC 84 7D    LDY $7D84
+.C:de60  B9 A6 7D    LDA $7DA6,Y
+.C:de63  29 FE       AND #$FE
+.C:de65  9D 5A 7D    STA $7D5A,X
+.C:de68  60          RTS
+;======================================
+.C:de69  AD 83 7D    LDA $7D83
+.C:de6c  C9 FE       CMP #$FE
+.C:de6e  D0 49       BNE $DEB9
+.C:de70  BD 6D 7D    LDA $7D6D,X
+.C:de73  30 F3       BMI $DE68
+.C:de75  F0 05       BEQ $DE7C
+.C:de77  DE 6D 7D    DEC $7D6D,X
+.C:de7a  F0 0D       BEQ $DE89
+.C:de7c  BD 6B 7D    LDA $7D6B,X
+.C:de7f  9D 69 7D    STA $7D69,X
+.C:de82  BD 6C 7D    LDA $7D6C,X
+.C:de85  9D 6A 7D    STA $7D6A,X
+.C:de88  60          RTS
+;======================================
+.C:de89  BD 68 7C    LDA $7C68,X
+.C:de8c  18          CLC
+.C:de8d  7D 54 7D    ADC $7D54,X
+.C:de90  A8          TAY
+.C:de91  B9 85 7D    LDA $7D85,Y
+.C:de94  9D 6C 7D    STA $7D6C,X
+.C:de97  B9 84 7D    LDA $7D84,Y
+.C:de9a  9D 6B 7D    STA $7D6B,X
+.C:de9d  B9 83 7D    LDA $7D83,Y
+.C:dea0  9D 6A 7D    STA $7D6A,X
+.C:dea3  B9 82 7D    LDA $7D82,Y
+.C:dea6  9D 69 7D    STA $7D69,X
+.C:dea9  B9 81 7D    LDA $7D81,Y
+.C:deac  9D 6D 7D    STA $7D6D,X
+.C:deaf  BD 54 7D    LDA $7D54,X
+.C:deb2  38          SEC
+.C:deb3  E9 05       SBC #$05
+.C:deb5  9D 54 7D    STA $7D54,X
+.C:deb8  60          RTS
+;======================================
+.C:deb9  C9 FF       CMP #$FF
+.C:debb  D0 22       BNE $DEDF
+.C:debd  BD 56 7D    LDA $7D56,X
+.C:dec0  DD 57 7D    CMP $7D57,X
+.C:dec3  90 17       BCC $DEDC
+.C:dec5  BD 66 7C    LDA $7C66,X
+.C:dec8  2D 51 7D    AND $7D51
+.C:decb  8D 51 7D    STA $7D51
+.C:dece  E0 0E       CPX #$0E
+.C:ded0  90 05       BCC $DED7
+.C:ded2  AD 50 7D    LDA $7D50
+.C:ded5  D0 05       BNE $DEDC
+.C:ded7  A9 08       LDA #$08
+.C:ded9  20 A3 7B    JSR $7BA3
+.C:dedc  4C C3 DD    JMP $DDC3
+.C:dedf  C9 F0       CMP #$F0
+.C:dee1  90 03       BCC $DEE6
+.C:dee3  EA          NOP
+.C:dee4  EA          NOP
+.C:dee5  60          RTS
+;======================================
+.C:dee6  C9 10       CMP #$10
+.C:dee8  B0 27       BCS $DF11
+.C:deea  E0 07       CPX #$07
+.C:deec  B0 20       BCS $DF0E
+.C:deee  29 0F       AND #$0F
+.C:def0  8D 7F 7D    STA $7D7F
+.C:def3  8D 56 7D    STA $7D56
+.C:def6  A9 00       LDA #$00
+.C:def8  8D 5C 7D    STA $7D5C
+.C:defb  8D 5D 7D    STA $7D5D
+.C:defe  8D 63 7D    STA $7D63
+.C:df01  8D 64 7D    STA $7D64
+.C:df04  20 B6 DF    JSR $DFB6
+.C:df07  8D 7E 7D    STA $7D7E
+.C:df0a  8D 55 7D    STA $7D55
+.C:df0d  60          RTS
+.C:df0e  4C B6 DF    JMP $DFB6
+;======================================
+.C:df11  C9 30       CMP #$30
+.C:df13  B0 19       BCS $DF2E
+.C:df15  29 1F       AND #$1F
+.C:df17  C9 10       CMP #$10
+.C:df19  90 02       BCC $DF1D
+.C:df1b  09 F0       ORA #$F0
+.C:df1d  6D 52 7D    ADC $7D52
+.C:df20  10 02       BPL $DF24
+.C:df22  A9 00       LDA #$00
+.C:df24  C9 10       CMP #$10
+.C:df26  90 02       BCC $DF2A
+.C:df28  A9 0F       LDA #$0F
+.C:df2a  8D 52 7D    STA $7D52
+.C:df2d  60          RTS
+;======================================
+.C:df2e  C9 60       CMP #$60
+.C:df30  B0 21       BCS $DF53
+.C:df32  0A          ASL A
+.C:df33  0A          ASL A
+.C:df34  C9 C0       CMP #$C0
+.C:df36  B0 07       BCS $DF3F
+.C:df38  5D 67 7C    EOR $7C67,X
+.C:df3b  29 C0       AND #$C0
+.C:df3d  D0 CF       BNE $DF0E
+.C:df3f  AD 83 7D    LDA $7D83
+.C:df42  29 0F       AND #$0F
+.C:df44  0D 80 7D    ORA $7D80
+.C:df47  A8          TAY
+.C:df48  20 B6 DF    JSR $DFB6
+.C:df4b  9D 69 7D    STA $7D69,X
+.C:df4e  98          TYA
+.C:df4f  9D 6A 7D    STA $7D6A,X
+.C:df52  60          RTS
+;======================================
+.C:df53  4A          LSR A
+.C:df54  4A          LSR A
+.C:df55  4A          LSR A
+.C:df56  4A          LSR A
+.C:df57  38          SEC
+.C:df58  E9 06       SBC #$06
+.C:df5a  8D 82 7D    STA $7D82
+.C:df5d  AD 83 7D    LDA $7D83
+.C:df60  29 0F       AND #$0F
+.C:df62  0D 80 7D    ORA $7D80
+.C:df65  8D 83 7D    STA $7D83
+.C:df68  BD 68 7C    LDA $7C68,X
+.C:df6b  18          CLC
+.C:df6c  7D 54 7D    ADC $7D54,X
+.C:df6f  A8          TAY
+.C:df70  20 B6 DF    JSR $DFB6
+.C:df73  8D 84 7D    STA $7D84
+.C:df76  BD 6D 7D    LDA $7D6D,X
+.C:df79  99 86 7D    STA $7D86,Y
+.C:df7c  BD 69 7D    LDA $7D69,X
+.C:df7f  99 87 7D    STA $7D87,Y
+.C:df82  BD 6A 7D    LDA $7D6A,X
+.C:df85  99 88 7D    STA $7D88,Y
+.C:df88  BD 6B 7D    LDA $7D6B,X
+.C:df8b  99 89 7D    STA $7D89,Y
+.C:df8e  BD 6C 7D    LDA $7D6C,X
+.C:df91  99 8A 7D    STA $7D8A,Y
+.C:df94  BD 54 7D    LDA $7D54,X
+.C:df97  18          CLC
+.C:df98  69 05       ADC #$05
+.C:df9a  9D 54 7D    STA $7D54,X
+.C:df9d  AD 82 7D    LDA $7D82
+.C:dfa0  9D 6D 7D    STA $7D6D,X
+.C:dfa3  AD 84 7D    LDA $7D84
+.C:dfa6  9D 69 7D    STA $7D69,X
+.C:dfa9  9D 6B 7D    STA $7D6B,X
+.C:dfac  AD 83 7D    LDA $7D83
+.C:dfaf  9D 6A 7D    STA $7D6A,X
+.C:dfb2  9D 6C 7D    STA $7D6C,X
+.C:dfb5  60          RTS
+;======================================
+.C:dfb6  BD 69 7D    LDA $7D69,X
+.C:dfb9  8D C3 DF    STA $DFC3
+.C:dfbc  BD 6A 7D    LDA $7D6A,X
+.C:dfbf  8D C4 DF    STA $DFC4
+.C:dfc2  AD E1 D1    LDA $D1E1		;Inlined
+.C:dfc5  FE 69 7D    INC $7D69,X
+.C:dfc8  D0 03       BNE $DFCD
+.C:dfca  FE 6A 7D    INC $7D6A,X
+.C:dfcd  60          RTS
+
+
+
+
+
+
+
+
+
+

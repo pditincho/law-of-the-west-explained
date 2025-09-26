@@ -1,0 +1,431 @@
+; ============================================================
+; Rapidlok - Stage 5 - Drive job loader - sets up two 1541 drive jobs and decrypts
+; Purpose:
+;  - Find sector sync marks and validate sentinel bytes
+;  - Create two "read sector" jobs in the drive job queue (job #0 and job #4)
+;  - Re-enable interrupts so the drive ROM services the queued jobs
+;  - After the reads complete, decrypt two memory ranges using XOR
+;  - Jump into the decrypted code
+; ============================================================
+
+
+; -------------------------
+; Drive job queue refresher
+; -------------------------
+; - The 1541 ROM maintains an internal job queue that performs tasks
+;   such as: read sector, write sector, execute code, etc.
+; - Normally callers use the drive API; this loader instead manipulates
+;   the job table directly to force the ROM to perform chosen actions.
+;
+; Key facts:
+; - There are 6 job slots (indices 0..5).
+; - There are 5 sector buffers (256 bytes each), located at:
+;     $0300, $0400, $0500, $0600, $0700  (associated with jobs 0..4)
+;   Job #5 has no associated buffer.
+; - A 'read sector' job causes the drive to load a decoded sector into
+;   its buffer; when finished the drive writes back job outcome metadata.
+; - The default interrupt handler of the drive will periodically scan for pending jobs and execute them.
+
+;
+; How this loader uses the system:
+; 1) Disable interrupts to stop the ROM from processing jobs immediately.
+; 2) Populate job metadata directly in the job-queue table (zero page).
+; 3) Re-enable interrupts so the ROM scans the queue and executes the jobs.
+;
+; -------------------------
+; Synchronization primitives
+; -------------------------
+; - The ROM provides a SYNC routine to find the sector sync mark.
+; - A "new byte" event from the drive is signaled by the CPU overflow flag.
+;	This signal is hardwired into the overflow pin of the drive's CPU, which can be inspected via the overflow bit of its flags register.
+;   Polling for a new byte is implemented with:
+;       wait_for_byte:
+;           BVC wait_for_byte    ; loop while V = 0 (no new byte)
+;   When the loop exits, clear V (CLV) and read the byte.
+;
+
+
+; NOTES / zero-page aliases used in this file
+job_code_for_job_0 = $00
+job_code_for_job_4 = $04
+track_for_job_0 = $06
+sector_for_job_0 = $07
+track_for_job_4 = $0e
+sector_for_job_4 = $0f
+gcr_work_area       = $24
+sentinel            = $bb
+sync_counter        = $c5
+data_port_b         = $1800
+data_port_a_disk_head = $1c01
+via2_peripheral_control_register = $1c0c		;VIA2 is used for the motor and head control
+decrypted_data_p1   = $5b     ; pointer_1 low byte
+decrypted_data_p1_hi= $5c
+decrypted_data_p2   = $bc     ; pointer_2 low byte
+temp                = $5a
+pointer_1_low        = $5b
+pointer_1_high       = $5c
+pointer_2_low        = $bc
+pointer_2_high       = $bd
+
+;=======================================================================================
+;Code loaded into disk drive memory, at "buffer for job #0" ($0300-03FF)
+;After loading it, execution of the disk drive's CPU will continue at $0300 (setup_jobs)
+;=======================================================================================
+
+
+;=======================================================================================
+; This code does the following:
+;
+;	-searches for 2 sector sync marks
+;	-validates sentinel bytes after the 
+;	-sets up 2 jobs to read 2 more sectors into the drive's memory
+;	-decrypts 2 memory areas
+;=======================================================================================
+setup_jobs:
+	;Set DATOUT, CLKOUT lines
+    LDA #$0A
+    STA data_port_b
+    SEI
+	; This sets up the VIA so particular CA/CB pins behave as outputs or generate interrupts on falling edges.
+	; Required for correct sampling of the head/CIA timing lines.
+    LDA #$EE       ;11101110b
+                                    ;CB2 Control: High output, CB1 Interrupt Control: Negative active edge
+                                    ;CA2 Control: High output, CA1 Interrupt Control: Negative active edge
+                                    ;Reference: http://unusedino.de/ec64/technical/aay/c1541/ro41f556.htm
+    STA via2_peripheral_control_register 
+;--------------------------------------------
+setup_sync:
+    LDA #$02
+    STA sync_counter
+;--------------------------------------------
+find_sync:
+	;Invoke the ROM SYNC routine to find a synchronization mark in this track
+    JSR SYNC        
+	;Use .X as bytes read counter
+    LDX #$0C
+;--------------------------------------------
+wait_for_byte_sync:
+	; Wait for V set (byte available)
+    BVC wait_for_byte_sync
+	;Clear signal to allow reading the next byte
+    CLV
+	;Read data from head
+    LDA data_port_a_disk_head
+	;Validate against GCR area (containing the raw header bytes?)
+    CMP gcr_work_area
+	;If the first byte doesn't match, sync again
+    BNE find_sync
+    DEX
+;--------------------------------------------
+wait_for_byte_sync_2:
+	;Wait for another byte sync - do this #0B times more (use .X as counter)
+    BVC wait_for_byte_sync_2
+    CLV
+	;Load sentinel value into .A
+    LDA data_port_a_disk_head
+	;Patched copies have this code instead: LDA #$7B, NOP
+    DEX
+    BNE wait_for_byte_sync_2
+;--------------------------------------------
+;Sync sequence complete
+	;Decrease the sync counter
+    DEC sync_counter
+	;If we exhausted the counter, check for the sentinel value
+    BEQ check_sentinel
+	;Otherwise, store the sentinel and do another sync sequence
+    STA sentinel
+    BNE find_sync
+check_sentinel:
+	;Does the sentinel read match the previous sentinel?
+    CMP sentinel
+	;If not, start over
+    BNE setup_sync
+
+
+;=======================================================================================
+; Populate drive job table (direct write, obfuscated)
+;
+; Jobs created:
+;   - Job #00 : read track $12 (18), sector $0F (15) → buffer $0300–$03FF
+;   - Job #04 : read track $12 (18), sector $03       → buffer $0700–$07FF
+;
+; Method:
+;   - The loader writes job entries directly into the drive's job-queue
+;     (zero-page table) and then re-enables interrupts so the ROM will
+;     service those jobs as if they had been generated via the API.
+;
+; Why it looks weird:
+;   - Value obfuscation: many values are computed using shifts (ASL/LSR),
+;     rotates (ROL/ROR) and XORs to hide literal constants and to derive
+;     fields from the sentinel/ROM bytes.
+;   - Sentinel dependence: multiple computed values are derived from the
+;     sentinel read from the disk header. If the sentinel is wrong, every
+;     dependent value will be incorrect and the loader will break.
+;   - Indexed addressing: the code writes into the job table indirectly
+;     using indexed loads/stores instead of straightforward absolute
+;     addresses, making static reading harder.
+;   - 16-bit wrap trick: the code deliberately points into the high page
+;     (addresses like $FF81) and then adds an index. Example:
+;         $FF81 + $7F = $1_0000 → low 16 bits = $0000
+;     This exploits 16-bit address wrap to reach low-page or zero-page
+;     addresses using a high-page base plus index.
+;=======================================================================================
+
+;--------------------------------------------
+; $07 = #00
+;--------------------------------------------
+	;At this point, .A = sentinel value = #7B
+	;#7B XOR #FB = #80
+    EOR #$FB
+    STA temp
+	;0x80 << 1 = #00 with Carry set
+    ASL A
+	;Store #00 into $07
+    STA $07
+	;If carry is clear, sentinel is not the expected value, exit
+    BCC fail
+;--------------------------------------------
+; .X = #7F (used for the obfuscated indexed memory positions)
+;--------------------------------------------
+	; Rotate carry (set) into .A 3 times
+	; .A = #04
+    ROL A
+    ROL A
+    ROL A
+	; #04 XOR #7B = #7F
+    EOR sentinel
+	;Store #7F in .X
+    TAX
+;--------------------------------------------
+; $15 = #12
+;--------------------------------------------
+    LDA temp    ;temp = 0x80
+	; #80 >> 3 = #10
+    LSR A
+    LSR A
+    LSR A
+	; #10 XOR #02 = #12 -> .Y
+    EOR #$02
+    TAY
+	; $0003 + Y = $0015
+	; Store #12 into $15
+    STA $0003,Y
+;--------------------------------------------
+; pointer_1 = $0200
+;--------------------------------------------
+	; .X = #7F
+	; $FF81 + 7F = $0000, which holds a value of #01
+    LDA $FF81,X
+	; #01 << 1 = #02
+	; Store #02 into >pointer_1
+    ASL A
+    STA >pointer_1
+	; .Y = #12
+	; $FFF5 + 12 = $0007, which holds a value of #00
+    LDA $FFF5,Y
+	; Store #00 into <pointer_1
+    STA <pointer_1
+;--------------------------------------------
+; pointer_2 = $03D8
+;--------------------------------------------
+	; At this point, .Y = #12, .X = #7F, .A = #00
+    TAY
+    TXA
+	; At this point, .Y = #00, .X = #7F, .A = #7F
+	; #7F XOR #7C = #03
+	; Store #03 into >pointer_2
+    EOR #$7C
+    STA >pointer_2
+	; $FF81 + 7F = $0000
+	; $00 holds the value #01
+    LDA $FF81,X
+	; #01 >> 1 and then rotated 1 right = #80
+    LSR A
+    ROR A
+	; #80 XOR #58 = #D8
+    EOR #$58
+	; Store #D8 into <pointer_2
+    STA <pointer_2
+;--------------------------------------------
+; track_for_job_0 = #12
+;--------------------------------------------
+	; >pointer_2 = #03
+    LDA >pointer_2
+	; .X = #03
+    TAX
+	; 12 + 3 = $15, which holds a value of #12
+	; 03 + 3 = $06
+	; Store #12 into $06
+    LDA $12,X
+    STA $03,X
+;--------------------------------------------
+; track_for_job_4 = #12
+;--------------------------------------------
+	;Push flags (value of flags = #74)
+    PHP
+	; .X = #03
+	; 3 XOR 4 = 7
+    TXA
+    EOR #$04
+	; .X = #07
+    TAX
+	; $0E + 7 = $15, which holds a value of #12
+    LDA $0E,X
+	; $7 + 7 = $0E
+	; Store #12 into $0E
+    STA $07,X
+;--------------------------------------------
+; job_code_for_job_4 = #80
+;--------------------------------------------
+	;Pull flags from stack into .A (flags = #74)
+    PLA
+	; #74 << 2 = #D0, Carry set
+    ASL A
+    ASL A
+	;.Y = #00, copy it into .A
+    TYA
+	; Rotate carry right into .A, making it have the value of #80
+    ROR A
+	;.Y = #00, $0004 + 0 = $04
+	; Store #80 into $04
+    STA $0004,Y
+;--------------------------------------------
+; sector_for_job_0 = #0F
+;--------------------------------------------
+	; .A = #80
+	; #80 XOR #8F = #0F
+    EOR #$8F
+	; .X = 7
+	; Store #0F in $07
+    STA $00,X
+;--------------------------------------------
+; sector_for_job_4 = #03
+;--------------------------------------------
+	; #0F XOR #0C = #03
+    EOR #$0C
+	; $08 + 7 = $0F
+	; Store #03 in $0F
+    STA $08,X
+;--------------------------------------------
+; job_code_for_job_0 = #80
+;--------------------------------------------
+	; Set .X = #00
+    LDA <pointer_1
+    TAX
+	; Load last byte read again (#80), store it in $00
+    LDA gcr_last_byte
+    STA $00,X
+
+
+;=======================================================================================
+;The following (relevant) memory positions have been changed by the previous code:
+;$00, $04, $06, $07, $0E, $0F
+;
+; At this point, memory at $0000 (the job queue table) is:
+;>8:0000  80 01 01 0f  80 00 12 0f 
+;>8:0008  11 00 12 01  12 00 12 03
+;>8:0010  00 00 46 32  00 12 46 32
+;>8:0018  12 0c 6a 00  00 00 10 00
+;
+;						Address		Purpose		Value	Meaning
+; Job #0 metadata		00			Job code	#80		Read a sector
+;						06			Track #		#12		Track 18
+;						07			Sector #	#0F		Sector 15
+; Job #4 metadata		04			Job code	#80		Read a sector
+;						0E			Track #		#12		Track 18
+;						0F			Sector #	#03		Sector 3
+;
+;
+; Job metadata has been set up, but jobs won't be processed until the interrupt handler is executed. Interrupts are still disabled.
+;
+;=======================================================================================
+; ------------------------------------------------------------
+; Decryption stage (XOR-based)
+; ------------------------------------------------------------
+; Purpose:
+;  - Decrypt two memory ranges in-place via XOR using two distinct keys.
+;
+; Ranges:
+;  - Target A: $0200 .. $022A  (written back to $0200 .. $022A)
+;  - Target B: $03D8 .. $03E4  (written back to $03D8 .. $03E4)
+;
+; Keys:
+;  - Key A: the bytes of the "execute" command that were sent earlier
+;           to the drive and stored in the command buffer at $0200..$022B.
+;           (The command string is: "B-E2 0 18 12" followed by $00 bytes.)
+;           Each byte of Target A is XORed with the corresponding byte
+;           from the command buffer.
+;
+;  - Key B: the bytes stored at $03C0..$03EB (key region in RAM).
+;           Each byte of Target B is XORed with the corresponding byte
+;           from that region.
+;
+; Notes:
+;  - The first decryption depends on the exact contents of the command
+;    buffer. If the command buffer is different (different command string,
+;    earlier execution failed, or the buffer was not populated), decryption
+;    will produce garbage.
+;  - The second decryption depends on the contents of $03C0..$03EB; changing
+;    those bytes will change the result.
+;=======================================================================================
+;--------------------------------------------
+; pointer_1 = $0200
+; pointer_2 = $03D8
+;
+; $03D8-03F6 XOR $0200-021E -> 03D8-03F6
+;--------------------------------------------
+decrypt_loop_1:
+        LDA (pointer_2),Y
+        EOR (pointer_1),Y
+        STA (pointer_2),Y
+        INY
+        CPY #$1E
+        BNE decrypt_loop_1
+;--------------------------------------------
+		;Set .X, .Y and .A to #00 (as .X is #00)
+        TXA
+        TAY
+		; #D8 XOR #18 = #C0 -> <pointer_2
+        LDA <pointer_2
+        EOR #$18
+        STA <pointer_2
+;--------------------------------------------
+; pointer_1 = $0200
+; pointer_2 = $03C0
+;
+; $03C0-03EB XOR $0200-022B -> $0200-022B
+;--------------------------------------------
+decrypt_loop_2:
+        LDA (pointer_2),Y
+        EOR (pointer_1),Y
+        STA (pointer_1),Y
+        INY
+        CPY #$2B
+        BNE decrypt_loop_2
+;--------------------------------------------
+		;Load #00 into .A and .Y
+        LDA pointer_1
+        TAY
+		;Clear out status codes of jobs 1, 2 and 3 (disabling them)
+        STA $01,X
+        STA $02,X
+        STA $03,X
+		;Check if .Y is nonzero, otherwise fail (reset the disk drive)
+        DEY
+        BNE exit
+fail:
+		;If any of the security checks failed, reset the drive
+        JMP disk_initialization        ;DSKINT routine in the 1541 ROM
+exit:
+		;Enable interrupts
+		;This will cause the 2 queued jobs to be processed, thus reading the sectors
+        SEI
+        JMP (pointer_1)       ;Execute the decrypted code at pointer_1 ($0200)
+
+;=======================================
+
+;- The bytes currently loaded at $0700..$07FF are NOT encrypted, but
+;   they represent only a partial fragment of the final program.
+; - Subsequent loader stages will populate the missing sections in
+;   other memory regions and link these pieces together into a
+;   complete, executable image.

@@ -1,0 +1,92 @@
+;=============================================================
+; Rapidlok — Stage 6: Job watcher & sector decryptor
+; ============================================================
+; Context:
+;  - In the previous stage the loader queued two drive jobs and
+;    re-enabled interrupts so the 1541 ROM would execute them.
+;  - Each queued job reads one decoded sector into a buffer:
+;      * Job 0 → buffer $0300–$03FF
+;      * Job 4 → buffer $0700–$07FF
+;  - Decrypted helper code was placed at $0200 and will run here.
+;
+; Purpose:
+;  1) Wait for the two queued jobs to finish. If a job fails, re-arm the
+;     same job entry so the ROM will retry it.
+;  2) Once both jobs complete successfully, decrypt the loaded sector(s)
+;     (XOR-based) and then jump to the decrypted code.
+;
+;=======================================================================================
+buffer0_pointer = $bc
+buffer4_pointer = $a1
+buffer_0 = $0300
+data_port_b = $1800
+
+;Execution resumes at address $0200
+
+; -----------------------------------------------------------------
+; Job-slot byte: command code vs outcome
+; -----------------------------------------------------------------
+; Each job slot stores a single status byte that is used for two roles:
+;  - Command code (pending request):  bit7 = 1  (values 0x80..0xFF)
+;  - Job outcome/result:              bit7 = 0  (values 0x00..0x7F)
+;
+; Typical outcome values:
+;  - $01 : success
+;  - $02..$10 : various error codes (drive/transfer errors)
+job_watchdog:
+	;Enable interrupts
+    CLI
+	;Use .X as job index
+    LDX #$04
+wait_for_job_completion:
+	;Check if the job #X is complete (bit 7 clear means it's complete)
+    LDA $00,X
+	;If not, loop until it is
+    BMI wait_for_job_completion
+	;It's complete - Did it succeed? #01 means success, anything else is an error
+    CMP #$02
+    BCC next_job
+	;It failed, so write the command code #80 (read a sector) again for this job, to retrigger it and start over
+    LDA #$80
+    STA $00,X
+	;Carry set, so branch will always be taken
+    BCS wait_for_job_completion
+next_job:
+	;Check the next job
+	;Note: on entry to this routine, only jobs #04 and #00 are pending
+    DEX
+    BPL wait_for_job_completion
+; -----------------------------------------------------------------
+; Job completion & decryption step
+; -----------------------------------------------------------------
+; Context (after job processing):
+;  - Job 0 read Track $12 (18) Sector $0F into buffer 0  → $0300–$03FF
+;  - Job 4 read Track $12 (18) Sector $03 into buffer 4  → $0700–$07FF
+;
+; Action:
+;  - Decrypt buffer 0 in-place by XORing each byte with the corresponding
+;    byte from buffer 4
+; -----------------------------------------------------------------
+decrypt_sector_data:
+	;Disable interrupts
+    SEI
+	; Set .A and .Y to #00
+    LDA #$00
+    TAY
+	;buffer0_pointer = $0300
+	;buffer4_pointer = $0700
+	;Note: the high bytes for each of these pointers was already set up in the previous stage
+    STA <buffer0_pointer
+    STA <buffer4_pointer
+	
+	;Decrypt buffer #0 with buffer #4 as key	
+decrypt_loop:
+    LDA (buffer0_pointer),Y
+    EOR (buffer4_pointer),Y
+    STA (buffer0_pointer),Y
+    INY
+    BNE decrypt_loop
+	
+    BIT data_port_b
+	;Jump into the decrypted buffer #0
+    JMP buffer_0

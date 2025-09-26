@@ -1,0 +1,53 @@
+; ============================================================
+; Rapidlok - Stage 3 - Second decryptor — resumes serial read and produces two outputs
+; Purpose:
+;  - Continue reading the remainder of the sector from the serial bus
+;  - For each pair of incoming bytes: store first byte into
+;    `decrypted_data` and store (second XOR first) into `decrypted_data_2`
+;  - Loop count: Y starts at #$58 (88 iterations) → 176 bytes processed
+; ============================================================
+
+; Entry assumptions
+;  - Execution entry: LDY #$58 ; caller sets Y = $58 before jumping here
+;  - Zero-page layout:
+;      decrypted_data   = $AE  ; pointer (low byte) at $AE, high at $AF
+;      decrypted_data_2 = $08  ; pointer (low byte) at $08, high at $09
+;  - The disk drive has already read the first 65 bytes (header + part)
+;    from the serial bus; this routine reads the remaining bytes.
+;
+; At this point, decrypted_data points to $02B6, so $02B6,Y points to $030E
+; decrypted_data_2 points to $0200, so $0200,Y points to $0258
+; As .Y is used as an index, the regions written to are:
+;
+;	decrypted_data		$02B6-030E
+;	decrypted_data_2	$0200-0258
+; Note: the remaining bytes of the sector contain the string "*RAPIDLOK 33*", which are ignored.
+
+decrypted_data   = $ae		;Pointer to decrypted_data
+decrypted_data_2 = $08		;Pointer to decrypted_data_2
+
+second_decryptor_loop:
+    ; Read one byte from serial (KERNAL ACPTR routine places byte in A)
+    JSR ACPTR					; ACPTR: KERNAL read byte from serial bus into A
+    ; Store first byte at (decrypted_data),Y
+    STA (decrypted_data),Y
+
+    ; Read next byte from serial
+    JSR ACPTR
+    ; XOR it with the previously stored byte
+    EOR (decrypted_data),Y
+    ; Store result into (decrypted_data_2),Y
+    STA (decrypted_data_2),Y
+
+    ; Decrement index and loop until Y wraps to 0
+    DEY
+    BPL second_decryptor_loop
+
+    ; On exit Y == $FF (Negative set), RTS to caller
+    RTS
+
+;-------------------------------------------------------
+;On return, the Negative flag will be set, so the BMI branch will be taken
+;Execution will continue at the start of decrypted_data
+;-------------------------------------------------------
+    BMI decrypted_data
