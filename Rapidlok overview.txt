@@ -1,220 +1,363 @@
-
 Rapidlok is a copy protection system used in some Commodore 64 games.
 
-I wanted to build a tool to extract all in-game dialogue from a disk image (rather than from a memory capture). To do that I first needed to understand how the game’s loader works.
+I wanted to build a tool to extract all in-game dialogue from a disk image
+(rather than from a memory capture). To do that I first needed to understand how
+the game’s loader works.
 
-More about the different Rapidlok versions is available at https://diskpreservation.com/dp.php?pg=bangui1 According to that source, the NTSC release of Law of the West uses Rapidlok version 1.
+More about the different Rapidlok versions is available at
+https://diskpreservation.com/dp.php?pg=bangui1 
+According to that source, the NTSC release of Law of the West uses Rapidlok version 1.
 
-Rapidlok protects both the loader and the game code by layering multiple techniques, including:
+Rapidlok protects both the loader and the game code by layering multiple
+techniques, including:
 
-	* a non-standard disk format (custom sector sizes, sectors per track and data encoding)
-	* encrypted code and data
-	* self-erasing code that deletes itself after use
-	* code obfuscation (reordering statements or intermingling logic)
-	* replacing simple constants with computed values to hide intent
-	* a multi-stage loader (roughly ten execution stages) that conceals the real loading logic
-	
-Each layer targets a different attack vector: physical disk copying, in-drive analysis, memory inspection, and static disassembly.	
-	
+    * a non-standard disk format (custom sector sizes, sectors per track and
+      data encoding)
+    * encrypted code and data
+    * self-erasing code that deletes itself after use
+    * code obfuscation (reordering statements or intermingling logic)
+    * replacing simple constants with computed values to hide intent
+    * a multi-stage loader (roughly ten execution stages) that conceals the
+      real loading logic
+
+Each layer targets a different attack vector: physical disk copying, in-drive
+analysis, memory inspection, and static disassembly.
+
 Custom disk format
 ==================
-A standard Commodore 64 disk contains 17–21 sectors per track (depending on the track), and each sector holds exactly 256 bytes of data. Because magnetic storage struggles to read long runs of identical bits, disks use a special encoding method known as Group Code Recording (GCR).
 
-Rapidlok disks mix standard and custom formats. A few tracks follow the usual DOS conventions, but most do not: they contain only 10–11 sectors per track, with larger payloads. These tracks also use custom data encoding and nonstandard sector headers. Without special drive code to interpret them, it is impossible to even locate where a sector begins, let alone read it.
+A standard Commodore 64 disk contains 17–21 sectors per track (depending on
+the track), and each sector holds exactly 256 bytes of data. Because magnetic
+storage struggles to read long runs of identical bits, disks use a special
+encoding method known as Group Code Recording (GCR).
 
-As a result, about 95% of the disk’s content is invisible to standard software. Only the directory and the first sector of each file can be read, since those reside on normal DOS tracks.
+Rapidlok disks mix standard and custom formats. A few tracks follow the usual
+DOS conventions, but most do not: they contain only 10–11 sectors per track,
+with larger payloads. These tracks also use custom data encoding and
+nonstandard sector headers. Without special drive code to interpret them, it is
+impossible to even locate where a sector begins, let alone read it.
 
-The disk still contains a standard directory, listing file names, types, and the location of each file’s first sector. On the game disk, this directory follows normal conventions and can be listed without issue.
+As a result, about 95% of the disk’s content is invisible to standard software.
+Only the directory and the first sector of each file can be read, since those
+reside on normal DOS tracks.
 
-Sectors metadata are stored in the Block Availability Map (BAM). The BAM indicates which sectors are free and which are occupied. On standard DOS/GCR tracks the BAM is accurate, but on Rapidlok tracks it is deliberately misleading, confusing most disk copiers and utilities. The BAM also stores the location of the directory sector.
+The disk still contains a standard directory, listing file names, types, and
+the location of each file’s first sector. On the game disk, this directory
+follows normal conventions and can be listed without issue.
 
-The game disk complies with BAM and directory conventions. Without this compliance, no file could be loaded at all — it would create a chicken-and-egg problem requiring a loader before any loader could be read.
+Sectors metadata are stored in the Block Availability Map (BAM). The BAM
+indicates which sectors are free and which are occupied. On standard DOS/GCR
+tracks the BAM is accurate, but on Rapidlok tracks it is deliberately
+misleading, confusing most disk copiers and utilities. The BAM also stores the
+location of the directory sector.
 
-Because of this setup, users can still use BASIC commands to attempt to load files. BASIC relies on KERNAL disk routines, which in turn assume these conventions are intact.
+The game disk complies with BAM and directory conventions. Without this
+compliance, no file could be loaded at all — it would create a chicken-and-egg
+problem requiring a loader before any loader could be read.
+
+Because of this setup, users can still use BASIC commands to attempt to load
+files. BASIC relies on KERNAL disk routines, which in turn assume these
+conventions are intact.
 
 When you run BASIC’s LOAD command, the following steps occur:
-	-read the BAM at track 18 sector 0 into the drive's memory
-	-in the BAM data, find the directory sector
-	-read the directory into the drive's memory
-	-in the directory, find the entry of the desired file
-	-in the file entry, read the location of its first sector
-	-start loading the file from its first sector
-	
-Once the first sector is read, the loader departs from normal DOS behavior and enters Rapidlok’s custom routines.
+    - read the BAM at track 18 sector 0 into the drive's memory
+    - in the BAM data, find the directory sector
+    - read the directory into the drive's memory
+    - in the directory, find the entry of the desired file
+    - in the file entry, read the location of its first sector
+    - start loading the file from its first sector
 
-
+Once the first sector is read, the loader departs from normal DOS behavior and
+enters Rapidlok’s custom routines.
 
 Disk drive
 ==========
-C64 disk drives are programmable devices. You can load and run custom code on them. Each drive contains its own processor, RAM, and firmware ROM.
 
-Code and data are transferred between the C64 and the drive over the serial bus (IEC/serial protocol). You can also command the drive to load sectors from disk into its memory and execute code there. This capability was widely exploited to implement custom fast-loaders and complex copy-protection schemes. A full analysis of Rapidlok therefore requires studying both the computer-side code and the drive-side firmware and memory layout.
+C64 disk drives are programmable devices. You can load and run custom code on
+them. Each drive contains its own processor, RAM, and firmware ROM.
 
+Code and data are transferred between the C64 and the drive over the serial bus
+(IEC/serial protocol). You can also command the drive to load sectors from disk
+into its memory and execute code there. This capability was widely exploited
+to implement custom fast-loaders and complex copy-protection schemes. A full
+analysis of Rapidlok therefore requires studying both the computer-side code
+and the drive-side firmware and memory layout.
 
 Game disk layout
 ================
-The Rapidlok-protected disk is structured with a mix of standard DOS sectors and custom Rapidlok-formatted sectors, with each file split between the two. Full details are documented in the accompanying “sector map” file.
 
-Side 1 contains seven files in total: the intro, the main game, and one file for each scene. Side 2 contains eight additional scene files.
+The Rapidlok-protected disk is structured with a mix of standard DOS sectors
+and custom Rapidlok-formatted sectors, with each file split between the two.
+Full details are documented in the accompanying “sector map” file.
 
-In every file, the first sector is “normal”: it uses standard GCR formatting and resides on a conventional DOS track. That first sector always contains a Rapidlok loader. The rest of the file’s content is stored in Rapidlok sectors, all located on Rapidlok-formatted tracks. For example, the sector map shows that the intro file’s actual content begins at track 19, sector 1.
+Side 1 contains seven files in total: the intro, the main game, and one file
+for each scene. Side 2 contains eight additional scene files.
+
+In every file, the first sector is “normal”: it uses standard GCR formatting
+and resides on a conventional DOS track. That first sector always contains a
+Rapidlok loader. The rest of the file’s content is stored in Rapidlok sectors,
+all located on Rapidlok-formatted tracks. For example, the sector map shows
+that the intro file’s actual content begins at track 19, sector 1.
 
 Normal file loading
 ===================
-By default, a user requests a file load from BASIC using the LOAD command. BASIC delegates the operation to the KERNAL disk routines, which instruct the drive to fetch the file and prepare to receive data over the serial bus.
 
-The drive reads the directory entry for the file to obtain the track and sector of the file’s first sector. It then positions the head on that track and scans the continuous bit stream for a sector header. (A C64 track is not physically divided into sectors; sector boundaries are located by special byte sequences in the data stream.) Each sector header contains metadata such as the sector number; when the header matches the desired sector the drive reads the following sector data into its buffer, decodes it, and transmits the decoded bytes to the C64 over the serial link. If the file spans multiple sectors, the drive repeats this process until the entire file is transferred into the computer’s memory.
+By default, a user requests a file load from BASIC using the LOAD command.
+BASIC delegates the operation to the KERNAL disk routines, which instruct the
+drive to fetch the file and prepare to receive data over the serial bus.
 
-When loading completes, the KERNAL returns control to BASIC, which displays READY. At this point the file’s bytes are in memory, but BASIC still controls execution — the user typically types RUN to start the newly loaded program.
+The drive reads the directory entry for the file to obtain the track and sector
+of the file’s first sector. It then positions the head on that track and scans
+the continuous bit stream for a sector header. (A C64 track is not physically
+divided into sectors; sector boundaries are located by special byte sequences
+in the data stream.) Each sector header contains metadata such as the sector
+number; when the header matches the desired sector the drive reads the
+following sector data into its buffer, decodes it, and transmits the decoded
+bytes to the C64 over the serial link. If the file spans multiple sectors, the
+drive repeats this process until the entire file is transferred into the
+computer’s memory.
+
+When loading completes, the KERNAL returns control to BASIC, which displays
+READY. At this point the file’s bytes are in memory, but BASIC still controls
+execution — the user typically types RUN to start the newly loaded program.
 
 Important implementation details:
 
-	* GCR decoding is drive-side and transparent to KERNAL. Sector payloads are stored in GCR; the drive decodes raw GCR bytes into a decoded buffer before sending them over the serial bus.
+    * GCR decoding is drive-side and transparent to KERNAL. Sector payloads are
+      stored in GCR; the drive decodes raw GCR bytes into a decoded buffer
+      before sending them over the serial bus.
 
-	* Two load modes exist: BASIC program loads (BASIC’s standard program area) and binary/absolute loads (the first two bytes of the file give the load address).
+    * Two load modes exist: BASIC program loads (BASIC’s standard program area)
+      and binary/absolute loads (the first two bytes of the file give the load
+      address).
 
-	* Unrestricted load address: The file-specified load address is not validated. A malicious or specially crafted loader can request an address that overwrites BASIC data or vectors, allowing the loader to take control of execution once the bytes are in place.
-
+    * Unrestricted load address: The file-specified load address is not
+      validated. A malicious or specially crafted loader can request an
+      address that overwrites BASIC data or vectors, allowing the loader to
+      take control of execution once the bytes are in place.
 
 Stage 1 - BASIC hijacking
 =========================
+
 (See “01-computer-first_loader” for a full byte-level analysis.)
 
-The KERNAL routine that implements LOAD begins at $F4A5. After setup it enters a loop that reads bytes from the serial bus one at a time. Each iteration calls a subroutine that checks whether the keyboard RUN/STOP key has been pressed; if so, the load is aborted.
+The KERNAL routine that implements LOAD begins at $F4A5. After setup it
+enters a loop that reads bytes from the serial bus one at a time. Each
+iteration calls a subroutine that checks whether the keyboard RUN/STOP key has
+been pressed; if so, the load is aborted.
 
-Although KERNAL code resides in ROM and cannot be overwritten directly, the KERNAL exposes a RAM vector table (a table of routine addresses stored in RAM) to allow certain routines to be overridden. On boot this table is populated with default addresses, but entries can be changed at runtime. The RUN/STOP scan vector is one such entry and is stored at $0328/$0329 (little-endian 16-bit address).
+Although KERNAL code resides in ROM and cannot be overwritten directly, the
+KERNAL exposes a RAM vector table (a table of routine addresses stored in RAM)
+to allow certain routines to be overridden. On boot this table is populated
+with default addresses, but entries can be changed at runtime. The RUN/STOP
+scan vector is one such entry and is stored at $0328/$0329 (little-endian
+16-bit address).
 
-On this disk, the first sector of the first game file specifies a load address of $02ED. As bytes are loaded starting at $02ED, writing 59 (0x3B) or more bytes will overwrite $0328/$0329 with values taken from the loaded payload. On the next loop iteration the KERNAL invokes the RUN/STOP check via that vector, which now points to $02ED — transferring execution into the newly loaded bytes and thus launching the custom loader without any further user action.
+On this disk, the first sector of the first game file specifies a load address
+of $02ED. As bytes are loaded starting at $02ED, writing 59 (0x3B) or more
+bytes will overwrite $0328/$0329 with values taken from the loaded payload.
+On the next loop iteration the KERNAL invokes the RUN/STOP check via that
+vector, which now points to $02ED — transferring execution into the newly
+loaded bytes and thus launching the custom loader without any further user
+action.
 
 Net effect
 
-	* New code/data occupy memory beginning at $02ED (and up through the overwritten vector).
-	* Execution continues at $02ED, under the control of the injected loader.
+    * New code/data occupy memory beginning at $02ED (and up through the
+      overwritten vector).
+    * Execution continues at $02ED, under the control of the injected loader.
 
-Note: the initial payload is deliberately small (0x3B = 59 bytes) so it fits into the region between $02ED and the vector area and can safely overwrite the vector to point at its own start.
-
+Note: the initial payload is deliberately small (0x3B = 59 bytes) so it fits
+into the region between $02ED and the vector area and can safely overwrite the
+vector to point at its own start.
 
 Stage 2 - first decryption
 ==========================
+
 (See “02-computer-first_decryptor” for a byte-level breakdown.)
 
-Execution resumes at $02ED. The 59-byte initial payload is divided into a 38-byte code region followed by a 21-byte encrypted region (addresses $02ED–$0311). The small loader code’s sole job is to decrypt that encrypted block.
+Execution resumes at $02ED. The 59-byte initial payload is divided into a
+38-byte code region followed by a 21-byte encrypted region (addresses
+$02ED–$0311). The small loader code’s sole job is to decrypt that encrypted
+block.
 
-Decryption is implemented as a simple XOR: each encrypted byte is XORed with a value drawn from an “XOR area.” Due to tight space constraints, the XOR area is embedded inside the code region itself — effectively the code is used as the decryption key. After the XOR loop finishes, execution transfers to the decrypted bytes.
+Decryption is implemented as a simple XOR: each encrypted byte is XORed with
+a value drawn from an “XOR area.” Due to tight space constraints, the XOR area
+is embedded inside the code region itself — effectively the code is used as
+the decryption key. After the XOR loop finishes, execution transfers to the
+decrypted bytes.
 
-Note that the serial load that delivered this payload remains suspended on the C64 (stage 1 hijacked the KERNAL vector), while the disk drive continues its work and stays ready to resume sending further data when invoked.
+Note that the serial load that delivered this payload remains suspended on the
+C64 (stage 1 hijacked the KERNAL vector), while the disk drive continues its
+work and stays ready to resume sending further data when invoked.
 
 Stage 3 - second decryption
 ===========================
+
 (See “03-computer-second_decryptor” for detailed analysis.)
 
-Execution resumes at $0316. At this point the loader continues the suspended serial transfer, with 191 additional bytes waiting to be read. The incoming data is divided between two memory regions: $02B6–$030E and $0200–$0258. Notably, loading into the first region overwrites most of the code executed in Stage 2.
+Execution resumes at $0316. At this point the loader continues the suspended
+serial transfer, with 191 additional bytes waiting to be read. The incoming
+data is divided between two memory regions: $02B6–$030E and $0200–$0258.
+Notably, loading into the first region overwrites most of the code executed
+in Stage 2.
 
-The routine processes the stream in pairs of bytes. The first byte of each pair is unencrypted and stored directly into the first region (“decrypted_data”). The second byte is encrypted; it is XORed with the first byte of the pair and stored in the second region (“decrypted_data_2”).
+The routine processes the stream in pairs of bytes. The first byte of each
+pair is unencrypted and stored directly into the first region (“decrypted_data”).
+The second byte is encrypted; it is XORed with the first byte of the pair and
+stored in the second region (“decrypted_data_2”).
 
-When all 191 bytes have been processed, execution returns to the caller, which transfers control to $02B6 — the beginning of the first region.
-
+When all 191 bytes have been processed, execution returns to the caller, which
+transfers control to $02B6 — the beginning of the first region.
 
 Stage 4 - disk drive configuration
 ==================================
+
 (See "04-computer-drive_configurator" for a detailed analysis)
 
-Stage 4 transfers control to the disk drive by installing Rapidlok’s custom loader code, preparing it to process protected tracks and transmit data back to the C64.
+Stage 4 transfers control to the disk drive by installing Rapidlok’s custom
+loader code, preparing it to process protected tracks and transmit data back
+to the C64.
 
-Stage 4 begins by reprogramming the disk drive with Rapidlok logic. This custom code enables the drive to handle non-standard Rapidlok tracks, unusual sector layouts, and custom data encoding. It also installs a “fast-loader,” doubling the transfer speed compared to the factory loader.
+Stage 4 begins by reprogramming the disk drive with Rapidlok logic. This
+custom code enables the drive to handle non-standard Rapidlok tracks, unusual
+sector layouts, and custom data encoding. It also installs a “fast-loader,”
+doubling the transfer speed compared to the factory loader.
 
-The computer issues a series of commands from the drive’s built-in ROM routines. It's an API that supports operations such as reading or writing a sector, or executing code in the drive’s RAM. 
+The computer issues a series of commands from the drive’s built-in ROM
+routines. It's an API that supports operations such as reading or writing a
+sector, or executing code in the drive’s RAM.
 
-Before the custom code is loaded, the computer sends two encrypted values: a track number and a sector number. These are stored in specific locations in drive RAM and decrypted later. They indicate where the real content of the file begins.
+Before the custom code is loaded, the computer sends two encrypted values: a
+track number and a sector number. These are stored in specific locations in
+drive RAM and decrypted later. They indicate where the real content of the
+file begins.
 
-Every file on the disk uses exactly the same Rapidlok loader sector we’ve been analyzing, differing only in those two bytes that specify the starting track and sector.
+Every file on the disk uses exactly the same Rapidlok loader sector we’ve been
+analyzing, differing only in those two bytes that specify the starting track
+and sector.
 
-Once the encrypted track/sector pair is written, the computer instructs the drive to load and execute track 18, sector 12 — effectively bootstrapping the custom Rapidlok loader from disk into drive RAM.
+Once the encrypted track/sector pair is written, the computer instructs the
+drive to load and execute track 18, sector 12 — effectively bootstrapping the
+custom Rapidlok loader from disk into drive RAM.
 
-From this point onward, the drive runs autonomously (stages 5–8), processing the custom format and eventually transmitting the file’s data back to the C64. The computer first receives two bytes from the serial bus, specifying the load address in its memory. It then reads the file’s data stream and writes it sequentially into RAM beginning at that address.
-
+From this point onward, the drive runs autonomously (stages 5–8), processing
+the custom format and eventually transmitting the file’s data back to the C64.
+The computer first receives two bytes from the serial bus, specifying the
+load address in its memory. It then reads the file’s data stream and writes it
+sequentially into RAM beginning at that address.
 
 Drive's job queue system
 ========================
-The disk drive ROM handles commands from the computer using a job queue system.
-A job is a unit of work that specifies the type of operation to perform, along with the track and sector involved. (See the ROM disassembly at  https://g3sl.github.io/c1541rom.html 
- for details.)
 
-The ROM reserves a section of memory to manage these jobs. Up to six jobs can be queued at once, each with its own metadata slot in the job table. The first five jobs also have a dedicated job buffer for data transfer:
+The disk drive ROM handles commands from the computer using a job queue
+system. A job is a unit of work that specifies the type of operation to
+perform, along with the track and sector involved. (See the ROM disassembly at
+https://g3sl.github.io/c1541rom.html for details.)
 
-	* Job #0 → buffer $0300–$03FF
-	* Job #1 → buffer $0400–$04FF
-	* Job #2 → buffer $0500–$05FF
-	* Job #3 → buffer $0600–$06FF
-	* Job #4 → buffer $0700–$07FF
+The ROM reserves a section of memory to manage these jobs. Up to six jobs can
+be queued at once, each with its own metadata slot in the job table. The first
+five jobs also have a dedicated job buffer for data transfer:
 
-Each buffer provides space for operations such as reading a sector into memory or writing memory back to disk.
+    * Job #0 → buffer $0300–$03FF
+    * Job #1 → buffer $0400–$04FF
+    * Job #2 → buffer $0500–$05FF
+    * Job #3 → buffer $0600–$06FF
+    * Job #4 → buffer $0700–$07FF
 
-Normally, when the computer issues a command, the drive’s ROM automatically creates the job’s metadata in the queue. A periodic routine scans the table for pending jobs and dispatches them. Once a job completes, its result is written back into the same metadata entry, where another routine can pass the outcome to the computer.
+Each buffer provides space for operations such as reading a sector into memory
+or writing memory back to disk.
 
-However, the same mechanism can also be exploited directly. By running custom code on the drive, one can manually create job metadata in the queue table, bypassing the ROM’s command handler entirely.
+Normally, when the computer issues a command, the drive’s ROM automatically
+creates the job’s metadata in the queue. A periodic routine scans the table
+for pending jobs and dispatches them. Once a job completes, its result is
+written back into the same metadata entry, where another routine can pass the
+outcome to the computer.
 
+However, the same mechanism can also be exploited directly. By running custom
+code on the drive, one can manually create job metadata in the queue table,
+bypassing the ROM’s command handler entirely.
 
 Stage 5 - Job loader
 ====================
+
 (See “05-drive-job_loader” for a detailed analysis)
 
 This stage occurs entirely within the disk drive.
 
-At this point, the drive has executed the sector requested by the computer’s previous M-E (memory execute) command, which instructed it to load track 18, sector 12 into buffer #0 ($0300–$03FF) and then execute it. The code in this sector is a custom job creator, designed to manipulate the drive’s job queue table directly.
+At this point, the drive has executed the sector requested by the computer’s
+previous M-E (memory execute) command, which instructed it to load track 18,
+sector 12 into buffer #0 ($0300–$03FF) and then execute it. The code in this
+sector is a custom job creator, designed to manipulate the drive’s job queue
+table directly.
 
 Job creation process
 
-	* Interrupts are first disabled to pause normal job processing.
-	* Two new jobs are added manually to the queue:
-		* Job #0: read track 18, sector 15 ($0F) into buffer #0 ($0300–$03FF).
-		* Job #4: read track 18, sector 3 into buffer #4 ($0700–$07FF).
+    * Interrupts are first disabled to pause normal job processing.
+    * Two new jobs are added manually to the queue:
+        * Job #0: read track 18, sector 15 ($0F) into buffer #0 ($0300–$03FF).
+        * Job #4: read track 18, sector 3 into buffer #4 ($0700–$07FF).
 
-	* Since these sectors are on track 18 (a normal GCR track), the default ROM routines can read and decode them without issue.
+    * Since these sectors are on track 18 (a normal GCR track), the default
+      ROM routines can read and decode them without issue.
 
 Decryption process
 
-After the jobs are queued, the code performs two rounds of decryption on the data in buffer #0:
+After the jobs are queued, the code performs two rounds of decryption on the
+data in buffer #0:
 
-	1. First round: Uses the byte string from the original M-E command as part of the decryption key. This ensures that any tampering with the command results in invalid decryption.
+    1. First round: Uses the byte string from the original M-E command as part
+       of the decryption key. This ensures that any tampering with the command
+       results in invalid decryption.
 
-	2. Second round: Uses part of the first decrypted output as the key for further decryption.
+    2. Second round: Uses part of the first decrypted output as the key for
+       further decryption.
 
-The final decrypted code forms a job watchdog routine (to be detailed in Stage 6).
+The final decrypted code forms a job watchdog routine (to be detailed in Stage
+6).
 
 Execution handoff
 
-	Interrupts are re-enabled, allowing the drive’s normal job processor to resume handling the queued jobs. Finally, execution transfers to the decrypted code starting at $0200.
-	
+    Interrupts are re-enabled, allowing the drive’s normal job processor to
+    resume handling the queued jobs. Finally, execution transfers to the
+    decrypted code starting at $0200.
+
 Stage 6 - Job watchdog
 ======================
+
 (See "06-drive-job_completed_decryptor" for detailed analysis)
 
 This stage runs entirely on the disk drive and has two parts.
 
 1) Watchdog / completion check
-The routine polls the two queued jobs (Job #0 and Job #4) until both complete. For each job:
+The routine polls the two queued jobs (Job #0 and Job #4) until both complete.
+For each job:
 
-	* It checks the completion status.
-	* If the job failed, it immediately retries the same job (using the existing job slot).
+    * It checks the completion status.
+    * If the job failed, it immediately retries the same job (using the existing
+      job slot).
 
 2) Decryption on success
-After both jobs succeed, the routine decrypts the loaded data by XORing the two sector payloads:
+After both jobs succeed, the routine decrypts the loaded data by XORing the
+two sector payloads:
 
-	* Source: data from track 18, sector 15 (in buffer #0, $0300–$03FF) XOR data from track 18, sector 3 (in buffer #4, $0700–$07FF)
-	* Destination: the result is written back to buffer #0 ($0300–$03FF).
+    * Source: data from track 18, sector 15 (in buffer #0, $0300–$03FF) XOR
+      data from track 18, sector 3 (in buffer #4, $0700–$07FF)
+    * Destination: the result is written back to buffer #0 ($0300–$03FF).
 
 Finally, execution jumps to the newly decrypted code at $0300.
 
 Stage 7 - Loader of the special loader
 =====================================
+
 (See "07-drive-loader_of_special_loader" for detailed analysis)
 
-In this stage, the drive sets up three jobs, each reading a single sector from track 18:
+In this stage, the drive sets up three jobs, each reading a single sector from
+track 18:
 
-	* Job #1: read sector 9 → buffer #1 ($0400–$04FF)
-	* Job #2: read sector 18 → buffer #2 ($0500–$05FF)
-	* Job #3: read sector 6 → buffer #3 ($0600–$06FF)
+    * Job #1: read sector 9 → buffer #1 ($0400–$04FF)
+    * Job #2: read sector 18 → buffer #2 ($0500–$05FF)
+    * Job #3: read sector 6 → buffer #3 ($0600–$06FF)
 
 The watchdog logic ensures they are all completed successfully.
 
@@ -222,95 +365,123 @@ Once all three jobs finish, execution resumes at $031C.
 
 Stage 8 - Special loader
 ========================
+
 (See 08-drive-special_loader for detailed analysis)
 
-At this stage, the drive’s memory region $031C–$07FD holds the entire special loader. This loader completely replaces the drive’s default routines for:
+At this stage, the drive’s memory region $031C–$07FD holds the entire special
+loader. This loader completely replaces the drive’s default routines for:
 
-	* Seeking the head to a specified track
-	* Locating a sector header on a Rapidlok track
-	* Reading and decoding Rapidlok sectors
-	* Preparing decoded data for transmission
-	* Sending data over the serial bus at double the normal rate (2 bits per cycle)
+    * Seeking the head to a specified track
+    * Locating a sector header on a Rapidlok track
+    * Reading and decoding Rapidlok sectors
+    * Preparing decoded data for transmission
+    * Sending data over the serial bus at double the normal rate (2 bits per
+      cycle)
 
-The only inputs required are the encrypted track and sector values sent by the computer during Stage 4.
+The only inputs required are the encrypted track and sector values sent by the
+computer during Stage 4.
 
-This loader also embeds multiple copy-protection checks (not analyzed in depth here; see the Rapidlok link provided earlier for details).
+This loader also embeds multiple copy-protection checks (not analyzed in
+depth here; see the Rapidlok link provided earlier for details).
 
 Key routines
 ------------
 
-	Sector headers
+    Sector headers
 
-		* Each header uses a custom 7-byte format containing XOR combinations of the track and sector numbers.
+        * Each header uses a custom 7-byte format containing XOR combinations
+          of the track and sector numbers.
 
-	Track seeking
+    Track seeking
 
-		* Tracks 1–12 are treated as having 11 sectors each.
-		* Tracks 13–35 are treated as having 10 sectors each.
+        * Tracks 1–12 are treated as having 11 sectors each.
+        * Tracks 13–35 are treated as having 10 sectors each.
 
-	Bitstream builder
+    Bitstream builder
 
-		* Accepts two input bytes (16 bits).
-		* Splits each nibble, mapping it into a 6-bit mask.
-		* Concatenates four masks into a 24-bit “bitstream” (3 bytes).
-		* Used both for generating sector headers and for decoding sector payloads.
-		
-	Bit reduction / transmission
+        * Accepts two input bytes (16 bits).
+        * Splits each nibble, mapping it into a 6-bit mask.
+        * Concatenates four masks into a 24-bit “bitstream” (3 bytes).
+        * Used both for generating sector headers and for decoding sector
+          payloads.
 
-		* Before transmission, every group of 3 consecutive bits in the bitstream is processed:
-			* The first bit is discarded.
-			* The remaining two bits are transmitted.
-		* This reduces each 24-bit stream to 16 transmitted bits.		
-		
-		
+    Bit reduction / transmission
+
+        * Before transmission, every group of 3 consecutive bits in the
+          bitstream is processed:
+            * The first bit is discarded.
+            * The remaining two bits are transmitted.
+        * This reduces each 24-bit stream to 16 transmitted bits.
+
 Sector read process
 -------------------
 
-	1. The drive reads 194 groups of 4 raw bytes each (total 776 bytes).
-	
-	2. The first byte is used only to update the checksum and then discarded
+    1. The drive reads 194 groups of 4 raw bytes each (total 776 bytes).
 
-	2. Each byte in the remaining triplet is stored into one of three dedicated raw buffers.
+    2. The first byte is used only to update the checksum and then discarded
 
-	3. Processing stage:
-		* For each triplet, the bit pair staging routine reconstructs 8 pairs of data bits (16 bits).
-		* These pairs are derived through the 24→16 reduction step.
+    2. Each byte in the remaining triplet is stored into one of three dedicated
+       raw buffers.
 
-	4. Transmission stage:
-		* The 16 bits are transmitted sequentially over the serial bus.
-		* On the computer side, the Stage 4 loader receives and stores these bits.
+    3. Processing stage:
+        * For each triplet, the bit pair staging routine reconstructs 8 pairs
+          of data bits (16 bits).
+        * These pairs are derived through the 24→16 reduction step.
 
-	5. This process repeats until the entire sector is decoded and delivered.		
-	
+    4. Transmission stage:
+        * The 16 bits are transmitted sequentially over the serial bus.
+        * On the computer side, the Stage 4 loader receives and stores these
+          bits.
+
+    5. This process repeats until the entire sector is decoded and delivered.
 
 Loading of other game files
 ===========================
-Whenever the game loads a new file—whether a scene, the intro screen, or the main game—it does so using the standard KERNAL file-loading routines.
-This re-triggers the entire Rapidlok sequence, starting again from Stage 1, and running through the same protection and loading steps as before.
+
+Whenever the game loads a new file—whether a scene, the intro screen, or the
+main game—it does so using the standard KERNAL file-loading routines. This
+re-triggers the entire Rapidlok sequence, starting again from Stage 1, and
+running through the same protection and loading steps as before.
 
 Some key aspects:
 
-	* The first sector of every file resides on a normal DOS-formatted track and contains a Stage 1 Rapidlok loader.
+    * The first sector of every file resides on a normal DOS-formatted track
+      and contains a Stage 1 Rapidlok loader.
 
-	* Each Stage 1 sector differs only in the two encrypted bytes that specify the track and sector of the file’s first real data sector.
+    * Each Stage 1 sector differs only in the two encrypted bytes that specify
+      the track and sector of the file’s first real data sector.
 
-	* On the computer side, the memory areas used by Rapidlok are chosen so they do not overlap with the game’s own code, allowing each file to load safely.
-
+    * On the computer side, the memory areas used by Rapidlok are chosen so
+      they do not overlap with the game’s own code, allowing each file to load
+      safely.
 
 Conclusion
 ==========
-Rapidlok’s protection system demonstrates a sophisticated, layered defense strategy.
 
-By combining a custom disk format, encrypted and self-modifying code, a staged multi-phase loader, and drive-side reprogramming, it closes off nearly every straightforward avenue of attack:
+Rapidlok’s protection system demonstrates a sophisticated, layered defense
+strategy.
 
-	* Disk copiers fail because most tracks use nonstandard sectoring and misleading BAM entries.
+By combining a custom disk format, encrypted and self-modifying code, a
+staged multi-phase loader, and drive-side reprogramming, it closes off nearly
+every straightforward avenue of attack:
 
-	* Drive-level inspection is thwarted by custom loaders, encrypted instructions, and routines that overwrite themselves.
-	
-	* Memory analysis is complicated by staged decryption, small loader fragments, and hijacking of KERNAL vectors.
+    * Disk copiers fail because most tracks use nonstandard sectoring and
+      misleading BAM entries.
 
-	* Static disassembly is obscured by obfuscation and computed constants.
+    * Drive-level inspection is thwarted by custom loaders, encrypted
+      instructions, and routines that overwrite themselves.
 
-Each file load, whether the intro, a scene, or the main game, restarts the entire sequence, ensuring that protection is reapplied at every step. No single bypass is enough; the loader forces an attacker to defeat the full chain repeatedly.
+    * Memory analysis is complicated by staged decryption, small loader
+      fragments, and hijacking of KERNAL vectors.
 
-In short, Rapidlok exemplifies the principle of layered security. It transforms the C64’s flexible drive–computer relationship into a protective framework, where only carefully orchestrated code can cross from disk to memory.
+    * Static disassembly is obscured by obfuscation and computed constants.
+
+Each file load, whether the intro, a scene, or the main game, restarts the
+entire sequence, ensuring that protection is reapplied at every step. No
+single bypass is enough; the loader forces an attacker to defeat the full
+chain repeatedly.
+
+In short, Rapidlok exemplifies the principle of layered security. It transforms
+the C64’s flexible drive–computer relationship into a protective framework,
+where only carefully orchestrated code can cross from disk to memory.
+
