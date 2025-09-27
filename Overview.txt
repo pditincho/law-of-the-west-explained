@@ -1,67 +1,97 @@
 
 Law of the West
 ===============
-When I first played this game, I was fascinated by its branching dialogue system and the many possible outcomes of each conversation.
+When I first played this game, I was fascinated by its branching
+dialogue system and the many possible outcomes of each conversation.
 
 I often wondered:
 
 	* How is the final score calculated?
 	* What triggers all six robbery scenes?
-	* How could I explore every dialogue option and consequence without replaying the game hundreds of times?
-	
+	* How could I explore every dialogue option and consequence 
+		without replaying the game hundreds of times?
+
 Back then, the answers were out of reach. Today, they are at hand.
 
-To uncover them, I partially disassembled the game, focusing on its scoring and dialogue systems. This required understanding how each scene’s data was stored on disk, which also led me to study its copy protection scheme, Rapidlok.
+To uncover them, I partially disassembled the game, focusing on its
+scoring and dialogue systems. This required understanding how each
+scene’s data was stored on disk, which also led me to study its copy
+protection scheme, Rapidlok.
 
-Once I mapped how the scenes were encoded, I wrote Python scripts to dump the complete dialogue tree, showing every choice and outcome.
+Once I mapped how the scenes were encoded, I wrote Python scripts to
+dump the complete dialogue tree, showing every choice and outcome.
 
 
 
 Copy protection
 ===============
-This game employs Rapidlok version 1 — an advanced protection system designed to resist duplication and analysis.  
-A detailed breakdown of its structure and operation is provided in the "Rapidlok overview" and in the annotated disassembly files.
+This game employs Rapidlok version 1 — an advanced protection system
+designed to resist duplication and analysis.
+A detailed breakdown of its structure and operation is provided in the
+"Rapidlok overview" and in the annotated disassembly files.
 
 
 Scene storage
 =============
-Each of the game’s 12 scenes is stored in a separate file. The disk itself is a hybrid: some tracks use standard Commodore DOS formatting, while most use Rapidlok’s custom format.  
+Each of the game’s 12 scenes is stored in a separate file. The disk
+itself is a hybrid: some tracks use standard Commodore DOS formatting,
+while most use Rapidlok’s custom format.
 
-Every file begins with a first sector stored on a normal DOS track. These first sectors are nearly identical copies of the auto-starting Rapidlok loader, differing only in the two bytes that specify the track and sector of the file’s actual content.  
+Every file begins with a first sector stored on a normal DOS track.
+These first sectors are nearly identical copies of the auto-starting
+Rapidlok loader, differing only in the two bytes that specify the track
+and sector of the file’s actual content.
 
-Once the loader takes control, it progresses through multiple execution stages before loading the real data. The first sector of the scene’s content is read, followed by the next, and so on until the file is fully assembled. All of these data sectors reside on Rapidlok-formatted tracks.  
+Once the loader takes control, it progresses through multiple execution
+stages before loading the real data. The first sector of the scene’s
+content is read, followed by the next, and so on until the file is fully
+assembled. All of these data sectors reside on Rapidlok-formatted
+tracks.
 
 For details of the disk’s structure, see the "sector map" file.
 
-	
+
 Rapidlok sector
 ===============
-For full technical details, see the "Rapidlok overview" file. 
+For full technical details, see the "Rapidlok overview" file.
 
 The key characteristics of a Rapidlok sector can be summarized as follows:
 
-	* Non-standard sectoring: Rapidlok defines its own rules for sector count per track, sector length, sync gaps, and header format.  
-	* Large payload size: Each sector carries 582 raw bytes of data, compared to the standard 320 raw bytes of a DOS sector.  
+	* Non-standard sectoring: Rapidlok defines its own rules for 
+		sector count per track, sector length, sync gaps, and header format.  
+	* Large payload size: Each sector carries 582 raw bytes of data, 
+		compared to the standard 320 raw bytes of a DOS sector.  
 	* Custom encoding: Payload data does not use standard GCR encoding.  
-	* Staggered storage: Bytes are arranged in groups of three rather than stored sequentially.  
-	* Optimized transmission: The staggered layout is designed to accelerate serial transfer to the C64.  
+	* Staggered storage: Bytes are arranged in groups of three rather than 
+		stored sequentially.  
+	* Optimized transmission: The staggered layout is designed to accelerate 
+		serial transfer to the C64.  
 
-By contrast, normal DOS sectors always hold 256 bytes and rely on GCR encoding for both sector headers and payloads.
-	
-	
+By contrast, normal DOS sectors always hold 256 bytes and rely on GCR
+encoding for both sector headers and payloads.
+
+
 Text storage
 ============
-All dialogue in the game is stored in a packed format to save space. The full alphabet, the space character, and selected punctuation marks total 32 symbols in all. With only 32 symbols to represent, each can be encoded in 5 bits (2^5 = 32), rather than using a full 8-bit byte.  
+All dialogue in the game is stored in a packed format to save space. The
+full alphabet, the space character, and selected punctuation marks total
+32 symbols in all. With only 32 symbols to represent, each can be
+encoded in 5 bits (2^5 = 32), rather than using a full 8-bit byte.
 
-Every line of dialogue is exactly 40 symbols long. At 5 bits per symbol, this equals 200 bits of packed data, or exactly 25 bytes once stored.  
+Every line of dialogue is exactly 40 symbols long. At 5 bits per symbol,
+this equals 200 bits of packed data, or exactly 25 bytes once stored.
 
-This scheme ensures that each line of text is compact, predictable in length, and efficient to store on disk.
+This scheme ensures that each line of text is compact, predictable in
+length, and efficient to store on disk.
 
 Dialogue tree
 =============
-There are 7 spoken lines in a complete conversation: 3 by the Sheriff and 4 by the NPC. A tier is one NPC line followed by a Sheriff reply. The game has 4 tiers total.
+There are 7 spoken lines in a complete conversation: 3 by the Sheriff
+and 4 by the NPC. A tier is one NPC line followed by a Sheriff reply.
+The game has 4 tiers total.
 
-There's only 1 possible tier 1 scenario, 4 tier 2 scenarios, 16 of tier 3 and 64 of tier 4.
+There's only 1 possible tier 1 scenario, 4 tier 2 scenarios, 16 of tier
+3 and 64 of tier 4.
 
 Sequence of lines
 
@@ -75,7 +105,7 @@ Sequence of lines
 
 At tiers 1–3, the Sheriff chooses one of 4 replies to the NPC’s line.
 
-This branching yields the following counts of distinct lines across all scenarios:
+This branching yields these counts of distinct lines across all scenarios:
 
 Here's the total of number of possible phrases for each tier:
 
@@ -86,7 +116,7 @@ Here's the total of number of possible phrases for each tier:
 	* NPC 3				16 * 1	(16 possible tier 3 scenarios)
 	* Sheriff 3			16 * 4
 	* NPC 4				64 * 1 	(64 possible tier 4 scenarios)
-	
+
 For a grand total of 169 lines.
 Grand total: 1 + 4 + 4 + 16 + 16 + 64 + 64 = 169 lines
 With 25 bytes per packed line, that's 169 × 25 = 4,225 bytes
@@ -94,39 +124,41 @@ With 25 bytes per packed line, that's 169 × 25 = 4,225 bytes
 
 Tree structure
 ==============
-	* Each NPC line of tiers 1-3 is followed immediately by the 4 possible sheriff lines for that scenario.
+	* Each NPC line of tiers 1-3 is followed immediately by the 4 possible 
+		sheriff lines for that scenario.
 	* For NPC line number x, the Sheriff lines are numbered [x + 1; x + 4].
 	* To find the NPC line number for the next scenario of the same tier, simply add 5.
 	* The four tiers are stored consecutively.
 	* Tier 1 has a single scenario, so the only NPC line is numbered 0.
 	* Tier 2 has 4 scenarios; the NPC lines are 5, 10, 15 and 20.
 	* Tier 3 has 16 scenarios; the NPC lines start at 25 and end at 100, stepping by 5.
-	* Tier 4 has 64 scenarios, but only NPC lines are present; lines start at 105 and end at 168.
+	* Tier 4 has 64 scenarios, but only NPC lines are present; lines start at 105 
+		and end at 168.
 
 The lines are stored in memory in this order (ranges inclusive, 0-based indexing):
 
-Line #		Line tier
-======		===========
-0			NPC tier 1
-1-4			Sheriff tier 1
-5			NPC tier 2 (for Sheriff tier 1 selection 1)
-6-9			Sheriff tier 2 (for Sheriff selection 1)
+Line #          Line tier
+======          ===========
+0                       NPC tier 1
+1-4                     Sheriff tier 1
+5                       NPC tier 2 (for Sheriff tier 1 selection 1)
+6-9                     Sheriff tier 2 (for Sheriff selection 1)
 ...
-20			NPC tier 2 (for Sheriff tier 1 selection 4)
-21-24		Sheriff tier 2 (for Sheriff tier 1 selection 4)
-25			NPC tier 3 (for Sheriff tier selections 1,1)
-26-29		Sheriff tier 3	(for Sheriff tier selections 1,1)
+20                      NPC tier 2 (for Sheriff tier 1 selection 4)
+21-24           Sheriff tier 2 (for Sheriff tier 1 selection 4)
+25                      NPC tier 3 (for Sheriff tier selections 1,1)
+26-29           Sheriff tier 3  (for Sheriff tier selections 1,1)
 ...
-40			NPC tier 3 (for Sheriff tier selections 1,4)
-41-44		Sheriff tier 3	(for Sheriff tier selections 1,4)
-45			NPC tier 3 (for Sheriff tier selections 2,1)
-46-49		Sheriff tier 3	(for Sheriff tier selections 2,1)
+40                      NPC tier 3 (for Sheriff tier selections 1,4)
+41-44           Sheriff tier 3  (for Sheriff tier selections 1,4)
+45                      NPC tier 3 (for Sheriff tier selections 2,1)
+46-49           Sheriff tier 3  (for Sheriff tier selections 2,1)
 ...
-100			NPC tier 3 (for Sheriff tier selections 4,4)
-101-104		Sheriff tier 3	(for Sheriff tier selections 4,4)
-105			NPC tier 4 (for selections 1,1,1)
+100                     NPC tier 3 (for Sheriff tier selections 4,4)
+101-104         Sheriff tier 3  (for Sheriff tier selections 4,4)
+105                     NPC tier 4 (for selections 1,1,1)
 ...
-168			NPC tier 4 (for selections 4,4,4)
+168                     NPC tier 4 (for selections 4,4,4)
 
 Or, more precisely:
 Tier 1
@@ -144,23 +176,29 @@ Tier 3
 Tier 4
 	* NPC4(S1,S2,S3) = 105 + ((S1 - 1) * 16 + (S2 - 1) * 4 + (S3 - 1))
 
-Note: the 4 Sheriff lines for a given scenario are displayed on the screen in a random order on every conversation. The display order doesn't change their underlying numeric "storage" order.
+Note: the 4 Sheriff lines for a given scenario are displayed on the
+screen in a random order on every conversation. The display order
+doesn't change their underlying numeric "storage" order.
 
 
 Scoring rules
 =============
 Seven metrics contribute to the final score:
-			
-Positive metrics			
-	Authority:			for each full conversation, you gain authority points (it can be zero)
+
+Positive metrics
+	Authority:			for each full conversation, you gain authority 
+							points (it can be zero)
 	Crooks captured:	+1 each time an NPC surrenders
-	Romance progress:	each full conversation with Rose, Ms. April or Belle grants a number of romance points
+	Romance progress:	each full conversation with Rose, Ms. April or 
+							Belle grants a number of romance points
 	Lawful kills:		+1 for each NPC killed after they drew a gun
-	
+
 Negative metrics
 	Unlawful kills:		+1 for each kill before the NPC drew a gun
-	Robberies:			number of robberies that occurred (out of 6),  effectively 6 − prevented_robberies
-						Obviously, to get a value of 0 requires finding out about all 6 robberies and shooting down the gang members.
+	Robberies:			number of robberies that occurred (out of 6),  
+							effectively 6 − prevented_robberies
+							Obviously, to get a value of 0 requires finding 
+							out about all 6 robberies and shooting down the gang members.
 	Injuries:			+1 each time the sheriff is injured					
 
 The final score is calculated in this manner:
@@ -180,14 +218,17 @@ The final score is calculated in this manner:
 	-If the result is negative, set it to 0.
 	-If the result is positive, multiply it by 285.
 	The result is clamped to a 4 digit number (0000-9999).
-	-Finally, the lower 2 digits are set to a random value, overwriting whatever value they had.
+	-Finally, the lower 2 digits are set to a random value, 
+		overwriting whatever value they had.
 
-I leave as an exercise to the reader to find what's the maximum achievable score.
+I leave as an exercise to the reader to find what's the maximum
+achievable score.
 
 
 Scenario outcomes
 =================
-Each conversation eventually transitions into one terminal outcome for the NPC.  
+Each conversation eventually transitions into one terminal outcome for
+the NPC.
 These are the eight possible end-of-conversation outcomes:
 
 **Peaceful outcomes**
@@ -207,7 +248,9 @@ These are the eight possible end-of-conversation outcomes:
 ---
 
 **Note:**  
-- The game engine defines 23 distinct NPC states in total, covering both conversation and non-conversation phases (entering the scene, speaking, waiting, exiting, etc.).  
+- The game engine defines 23 distinct NPC states in total, covering both 
+	conversation and non-conversation phases (entering the scene, speaking, 
+	waiting, exiting, etc.).  
 - The eight outcomes above correspond only to the conversation-completion states.
 - All 23 states fit into a single 5-bit field (2^5 = 32 > 23).
 
@@ -225,32 +268,39 @@ The possible states for the doctor are:
 
 ### Initial conditions
 - At the start of the game, the doctor is always out of town.  
-- He first appears in scene 4. After the conversation there, his state changes to one of the other three (friendly, drunk, or hostile).
+- He first appears in scene 4. After the conversation there, his state changes 
+	to one of the other three (friendly, drunk, or hostile).
 
 ### Healing rules
-- If the doctor is friendly, he will heal the Sheriff when shot, but only up to two times.  
-- On the third injury, the doctor automatically becomes drunk, regardless of his previous state.  
-- If the doctor is not friendly when the Sheriff is shot, he will not heal him, and the game ends (the Sheriff dies).
+- If the doctor is friendly, he will heal the Sheriff when shot, but only 
+	up to two times.  
+- On the third injury, the doctor automatically becomes drunk, regardless of 
+	his previous state.  
+- If the doctor is not friendly when the Sheriff is shot, he will not heal him, 
+	and the game ends (the Sheriff dies).
 
 ### Special transitions
 - If the Sheriff shoots the doctor, the doctor’s state reverts to out of town.  
-- Earlier speculation suggested that the doctor’s state was influenced by the number of lawful or unlawful kills.  
-  In reality, these have no effect on his state.	
-  
+- Earlier speculation suggested that the doctor’s state was influenced by the 
+	number of lawful or unlawful kills. In reality, these have no effect on his state.	
+
 
 Outcome storage
 ===============
-There are 64 possible NPC conversation scenarios (4×4×4). Each has a 1-byte outcome entry.
+There are 64 possible NPC conversation scenarios (4×4×4). Each has a
+1-byte outcome entry.
 
 Indexing
 --------
 Given Sheriff choices S1,S2,S3 ∈ {1..4} at tiers 1–3:
 offset = 16·S1 + 4·S2 + S3 − 21
        = 16·(S1−1) + 4·(S2−1) + (S3−1)     // zero-based 0..63
-	  
 
-For example, if the sheriff selected lines 2, 3 and 4 in that order, then the offset is: (2 * 16 + 3 * 4 + 4) - 21 = (32 + 12 + 4) - 21 = 48 - 21 = 27
-		
+
+For example, if the sheriff selected lines 2, 3 and 4 in that order,
+then the offset is: (2 * 16 + 3 * 4 + 4) - 21 = (32 + 12 + 4) - 21 = 48
+- 21 = 27
+
 Layout of the outcome byte (bit 7 = MSB, bit 0 = LSB)
 -----------------------------------------------------
 [7 6 5][4 3 2 1 0]
@@ -268,7 +318,7 @@ NPC type: woman
   * Romance ∈ {0,1,2,3} (2 bits)
 -   Authority     = (meta >> 2) & 0x1   // 0→authority 0, 1→authority 6
     Romance       =  meta       & 0x3   // 0..3 romance
-  
+
 NPC type: man (non-doctor)
 - meta is the authority score directly:
     authority = (outcome_byte >> 5)         // 0..7
@@ -284,12 +334,13 @@ NPC type: doctor
 
 Scene structure
 ===============
-At least for my goal of decoding the full dialogue and interpreting the outcomes, this is the relevant scene structure:
+At least for my goal of decoding the full dialogue and interpreting the outcomes, 
+this is the relevant scene structure:
 
-Offset			Purpose
-======			=======
-0x00-0x3F		End-of-conversation outcomes
-0x140-0x11C1 	Dialogue lines
+Offset                  Purpose
+======                  =======
+0x00-0x3F               End-of-conversation outcomes
+0x140-0x11C1    Dialogue lines
 
 
 Dump utility
